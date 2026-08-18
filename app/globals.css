@@ -1,0 +1,8 @@
+/* Only the declarations all three artboards shared verbatim live here.
+   Everything else is scoped per artboard (.ire / .rrp / .sectpl) so the routes
+   can't restyle each other — Next.js applies imported CSS app-wide. */
+body {
+  margin: 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  background: #EFEDE8;
+}
