@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"></link>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"></link>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap"></link>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+<style>
+body{margin:0;font-family:'Open Sans',system-ui,sans-serif;background:#EFEDE8;-webkit-font-smoothing:antialiased;print-color-adjust:exact}
+a{color:var(--acc,#3E5C76);text-decoration:none}
+a:hover{color:var(--acc,#3E5C76);text-decoration:underline}
+input,textarea{font:inherit;color:inherit;border:0;background:transparent;padding:1px 2px;margin:-1px -2px;field-sizing:content;letter-spacing:inherit;text-align:inherit}
+textarea{resize:none;display:block;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}
+input::placeholder,textarea::placeholder{color:#A9A29A;opacity:1}
+input:hover:not(:focus),textarea:hover:not(:focus){background:color-mix(in oklab,var(--acc,#3E5C76) 5%,transparent);border-radius:3px}
+input:focus,textarea:focus{outline:none;border-radius:3px;background:color-mix(in oklab,var(--acc,#3E5C76) 7%,transparent);box-shadow:0 1.5px 0 var(--acc,#3E5C76)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--acc,#3E5C76);outline-offset:2px;border-radius:4px}
+.sctls,.ectls,.adde,.adds,.lctl,.cbdel{opacity:0;pointer-events:none;transition:opacity .15s ease .12s}
+.sec:hover>.sctls,.sec:focus-within>.sctls,.ent:hover>.ectls,.ent:focus-within>.ectls,.sec:hover .adde,.sec:focus-within .adde,.rzr:hover .adds,.rzr:focus-within .adds,.citem:hover .lctl,.citem:focus-within .lctl{opacity:1;pointer-events:auto;transition-delay:0s}
+.cbrow:hover .cbdel,.cbrow:focus-within .cbdel{opacity:1;pointer-events:auto;transition-delay:0s}
+.showall .sctls,.showall .ectls,.showall .adde,.showall .adds,.showall .lctl,.showall .cbdel{opacity:1;pointer-events:auto}
+.pop{animation:pin .13s ease}
+@keyframes pin{from{opacity:0;transform:translateY(4px)}}
+@media print{.no-print,.sctls,.ectls,.adde,.adds,.lctl,.cbdel{display:none!important}body{background:#fff}.pg{box-shadow:none!important;margin:0!important;width:auto!important;padding:0!important}input::placeholder,textarea::placeholder{color:transparent}input:focus,textarea:focus,input:hover,textarea:hover{background:none;box-shadow:none}}
+</style>
+</helmet>
+<div class="rzr {{showAllCls}}" ref="{{rootRef}}" style="min-height:100vh;position:relative;padding:34px 24px 90px;--acc:{{accent}}">
+<div class="no-print" style="width:794px;max-width:100%;margin:0 auto;display:flex;justify-content:flex-end;align-items:center;gap:14px;font-size:12.5px;color:#6B665E">
+<span>Template</span>
+<button onClick="{{openTemplatePicker}}" style="padding:5px 12px;border:1px solid #DDD8CF;border-radius:7px;background:#fff;font-weight:600;color:#3F3B35" style-hover="background:#F6F4EF">{{tplName}}</button>
+<span>Dates</span>
+<div style="display:flex;border:1px solid #DDD8CF;border-radius:7px;overflow:hidden;background:#fff">
+<button onClick="{{setFmtS}}" aria-pressed="{{fmtShortSel}}" style="padding:5px 11px;font-size:12.5px;background:{{fsBg}};color:{{fsFg}};font-weight:{{fsFw}}">Jan 2026</button>
+<button onClick="{{setFmtL}}" aria-pressed="{{fmtLongSel}}" style="padding:5px 11px;font-size:12.5px;background:{{flBg}};color:{{flFg}};font-weight:{{flFw}}">January 2026</button>
+</div>
+<button onClick="{{toggleMargins}}" style="padding:5px 12px;border:1px solid #DDD8CF;border-radius:7px;background:{{marginsBtnBg}};color:{{marginsBtnFg}};font-weight:600" style-hover="background:#F6F4EF">{{marginsBtnLabel}}</button>
+<button onClick="{{exportPDF}}" style="padding:5px 12px;border:1px solid #DDD8CF;border-radius:7px;background:#fff" style-hover="background:#F6F4EF">Export PDF</button>
+<button onClick="{{exportDocx}}" style="padding:5px 12px;border:1px solid #DDD8CF;border-radius:7px;background:#fff" style-hover="background:#F6F4EF">Export Word</button>
+<button onClick="{{doPrint}}" style="padding:5px 12px;border:1px solid #DDD8CF;border-radius:7px;background:#fff" style-hover="background:#F6F4EF">Print</button>
+</div>
+<div class="pg" data-screen-label="Resume editor" ref="{{pageRef}}" style="width:794px;max-width:100%;box-sizing:border-box;margin:14px auto 0;background:#fff;box-shadow:0 1px 2px rgba(30,27,22,.05),0 16px 40px -18px rgba(30,27,22,.22);padding:{{pgPadTop}}px {{pgPadRight}}px {{pgPadBottom}}px {{pgPadLeft}}px;position:relative;font-family:{{tplFont}}">
+<sc-if value="{{showMargins}}" hint-placeholder-val="{{false}}">
+<div style="position:absolute;top:{{pgPadTop}}px;left:0;right:0;height:0;border-top:1px dashed var(--acc,#3E5C76);pointer-events:none;z-index:5"></div>
+<div onMouseDown="{{dragTop}}" title="Drag to set top margin" style="position:absolute;top:{{pgPadTop}}px;left:50%;transform:translate(-50%,-50%);pointer-events:auto;cursor:ns-resize;background:var(--acc,#3E5C76);color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;z-index:6;white-space:nowrap">Top {{mTop}}"</div>
+<div style="position:absolute;bottom:{{pgPadBottom}}px;left:0;right:0;height:0;border-top:1px dashed var(--acc,#3E5C76);pointer-events:none;z-index:5"></div>
+<div onMouseDown="{{dragBottom}}" title="Drag to set bottom margin" style="position:absolute;bottom:{{pgPadBottom}}px;left:50%;transform:translate(-50%,50%);pointer-events:auto;cursor:ns-resize;background:var(--acc,#3E5C76);color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;z-index:6;white-space:nowrap">Bottom {{mBottom}}"</div>
+<div style="position:absolute;left:{{pgPadLeft}}px;top:0;bottom:0;width:0;border-left:1px dashed var(--acc,#3E5C76);pointer-events:none;z-index:5"></div>
+<div onMouseDown="{{dragLeft}}" title="Drag to set left margin" style="position:absolute;left:{{pgPadLeft}}px;top:calc({{pgPadTop}}px / 2);transform:translate(-50%,-50%);pointer-events:auto;cursor:ew-resize;background:var(--acc,#3E5C76);color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;z-index:6;white-space:nowrap">Left {{mLeft}}"</div>
+<div style="position:absolute;right:{{pgPadRight}}px;top:0;bottom:0;width:0;border-left:1px dashed var(--acc,#3E5C76);pointer-events:none;z-index:5"></div>
+<div onMouseDown="{{dragRight}}" title="Drag to set right margin" style="position:absolute;right:{{pgPadRight}}px;top:calc({{pgPadTop}}px / 2);transform:translate(50%,-50%);pointer-events:auto;cursor:ew-resize;background:var(--acc,#3E5C76);color:#fff;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;z-index:6;white-space:nowrap">Right {{mRight}}"</div>
+</sc-if>
+<div style="background:{{hdrBg}};padding:{{hdrPad}};border-radius:{{hdrRadius}};margin-bottom:{{hdrGap}}">
+<sc-if value="{{hdrStacked}}" hint-placeholder-val="{{true}}">
+<input data-path="header.name" value="{{d.header.name}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Your name" aria-label="Name" style="display:block;width:100%;font-size:33px;font-weight:700;letter-spacing:-.015em;color:{{hdrNameColor}};line-height:1.15;text-align:{{hdrAlign}}"></input>
+<input data-path="header.title" value="{{d.header.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Professional title" aria-label="Professional title" style="display:block;width:100%;font-size:15px;color:{{hdrTitleColor}};margin-top:5px;text-align:{{hdrAlign}}"></input>
+</sc-if>
+<sc-if value="{{hdrRow}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:14px">
+<input data-path="header.name" value="{{d.header.name}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Your name" aria-label="Name" style="flex:1;min-width:0;font-size:29px;font-weight:700;letter-spacing:-.015em;color:{{hdrNameColor}}"></input>
+<input data-path="header.title" value="{{d.header.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Professional title" aria-label="Professional title" style="flex:none;text-align:right;font-size:14px;color:{{hdrTitleColor}}"></input>
+</div>
+</sc-if>
+</div>
+<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:{{hdrContactsJustify}};column-gap:9px;row-gap:4px;font-size:13px;color:#4C4841">
+<span class="citem" style="display:inline-flex;align-items:center;gap:5px">
+<sc-if value="{{c0.isLink}}" hint-placeholder-val="{{false}}"><a href="{{c0.href}}" target="_blank" rel="noopener" style="display:inline-block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">{{c0.text}}</a></sc-if>
+<sc-if value="{{c0.noLink}}" hint-placeholder-val="{{true}}"><input data-path="{{c0.path}}" value="{{c0.text}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Email" aria-label="Email" style="min-width:36px"></input></sc-if>
+<button class="lctl" onClick="{{c0.openLink}}" aria-label="Edit link for email" title="Add or edit link" style="width:20px;height:20px;display:grid;place-items:center;border-radius:5px;color:#948E84" style-hover="background:#F0EDE7;color:#3F3B35"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.2 7.2 4.8"></path><path d="M5.5 3.6l1-1a2 2 0 0 1 2.9 2.9l-1 1"></path><path d="M6.5 8.4l-1 1a2 2 0 0 1-2.9-2.9l1-1"></path></svg></button>
+</span>
+<span style="color:#C9C4BB">·</span>
+<span class="citem" style="display:inline-flex;align-items:center;gap:5px">
+<sc-if value="{{c1.isLink}}" hint-placeholder-val="{{false}}"><a href="{{c1.href}}" target="_blank" rel="noopener" style="display:inline-block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">{{c1.text}}</a></sc-if>
+<sc-if value="{{c1.noLink}}" hint-placeholder-val="{{true}}"><input data-path="{{c1.path}}" value="{{c1.text}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Phone" aria-label="Phone" style="min-width:36px"></input></sc-if>
+<button class="lctl" onClick="{{c1.openLink}}" aria-label="Edit link for phone" title="Add or edit link" style="width:20px;height:20px;display:grid;place-items:center;border-radius:5px;color:#948E84" style-hover="background:#F0EDE7;color:#3F3B35"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.2 7.2 4.8"></path><path d="M5.5 3.6l1-1a2 2 0 0 1 2.9 2.9l-1 1"></path><path d="M6.5 8.4l-1 1a2 2 0 0 1-2.9-2.9l1-1"></path></svg></button>
+</span>
+<span style="color:#C9C4BB">·</span>
+<span class="citem" style="display:inline-flex;align-items:center;gap:5px">
+<sc-if value="{{c2.isLink}}" hint-placeholder-val="{{false}}"><a href="{{c2.href}}" target="_blank" rel="noopener" style="display:inline-block;max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">{{c2.text}}</a></sc-if>
+<sc-if value="{{c2.noLink}}" hint-placeholder-val="{{true}}"><input data-path="{{c2.path}}" value="{{c2.text}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="City, State" aria-label="Location" style="min-width:36px"></input></sc-if>
+<button class="lctl" onClick="{{c2.openLink}}" aria-label="Edit link for location" title="Add or edit link" style="width:20px;height:20px;display:grid;place-items:center;border-radius:5px;color:#948E84" style-hover="background:#F0EDE7;color:#3F3B35"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.2 7.2 4.8"></path><path d="M5.5 3.6l1-1a2 2 0 0 1 2.9 2.9l-1 1"></path><path d="M6.5 8.4l-1 1a2 2 0 0 1-2.9-2.9l1-1"></path></svg></button>
+</span>
+</div>
+<sc-for list="{{secs}}" as="s" hint-placeholder-count="4">
+<section class="sec" style="position:relative;margin-top:30px">
+<div class="sctls" style="position:absolute;right:-4px;top:-2px;display:flex;flex-direction:row;gap:2px;padding:2px 0 18px 16px">
+<button onClick="{{s.openStyle}}" aria-label="Change section style" title="Change section style" style="width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:#8A857D" style-hover="background:#EFECE6;color:#3F3B35"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="1.3" y="1.3" width="4" height="4" rx="0.8"></rect><rect x="6.7" y="1.3" width="4" height="4" rx="0.8"></rect><rect x="1.3" y="6.7" width="4" height="4" rx="0.8"></rect><rect x="6.7" y="6.7" width="4" height="4" rx="0.8"></rect></svg></button>
+<button onClick="{{s.up}}" disabled="{{s.upDis}}" aria-label="Move section up" title="Move up" style="width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:#8A857D" style-hover="background:#EFECE6;color:#3F3B35"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5 6 4l3.5 3.5"></path></svg></button>
+<button onClick="{{s.down}}" disabled="{{s.dnDis}}" aria-label="Move section down" title="Move down" style="width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:#8A857D" style-hover="background:#EFECE6;color:#3F3B35"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5 6 8l3.5-3.5"></path></svg></button>
+<button onClick="{{s.del}}" aria-label="Delete section" title="Delete section" style="width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:#8A857D" style-hover="background:#F8EEEC;color:#B04A42"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h8"></path><path d="M4.5 3.5v-1h3v1"></path><path d="M3.2 3.5l.5 6.2h4.6l.5-6.2"></path></svg></button>
+</div>
+<sc-if value="{{s.headTop}}" hint-placeholder-val="{{true}}">
+<div style="border-bottom:1px solid #E6E2DA;padding-bottom:5px">
+<input data-path="{{s.pTitle}}" value="{{s.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Section title" aria-label="Section title" style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--acc,#3E5C76);min-width:90px;max-width:100%"></input>
+</div>
+</sc-if>
+<sc-if value="{{s.txtClassic}}" hint-placeholder-val="{{true}}">
+<textarea data-path="{{s.pBody}}" value="{{s.body}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyM}}" placeholder="{{s.phBody}}" aria-label="Section text" rows="1" style="width:100%;margin-top:9px;font-size:13.5px;line-height:1.62;color:{{s.bodyColor}};text-align:{{s.bodyAlign}};text-wrap:pretty"></textarea>
+</sc-if>
+<sc-if value="{{s.txtSide}}" hint-placeholder-val="{{false}}">
+<div style="display:grid;grid-template-columns:112px 1fr;gap:18px;margin-top:4px">
+<input data-path="{{s.pTitle}}" value="{{s.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Section title" aria-label="Section title" style="width:100%;align-self:start;padding-top:3px;font-size:11.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--acc,#3E5C76)"></input>
+<textarea data-path="{{s.pBody}}" value="{{s.body}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyM}}" placeholder="{{s.phBody}}" aria-label="Section text" rows="1" style="width:100%;font-size:13.5px;line-height:1.62;color:#3B3833;text-wrap:pretty"></textarea>
+</div>
+</sc-if>
+<sc-if value="{{s.txtTinted}}" hint-placeholder-val="{{false}}">
+<div style="background:color-mix(in oklab,var(--acc,#3E5C76) 5%,#fff);border-radius:8px;padding:14px 16px;margin-top:6px">
+<input data-path="{{s.pTitle}}" value="{{s.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Section title" aria-label="Section title" style="display:block;width:100%;font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--acc,#3E5C76)"></input>
+<textarea data-path="{{s.pBody}}" value="{{s.body}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyM}}" placeholder="{{s.phBody}}" aria-label="Section text" rows="1" style="width:100%;margin-top:6px;font-size:13px;line-height:1.6;color:#3B3833;text-wrap:pretty"></textarea>
+</div>
+</sc-if>
+<sc-if value="{{s.txtEditorial}}" hint-placeholder-val="{{false}}">
+<div style="border-top:1px solid #E6E2DA;border-bottom:1px solid #E6E2DA;padding:12px 0;margin-top:6px">
+<textarea data-path="{{s.pBody}}" value="{{s.body}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyM}}" placeholder="{{s.phBody}}" aria-label="Section text" rows="1" style="width:100%;font-size:15px;line-height:1.6;color:#26231F;text-wrap:pretty"></textarea>
+</div>
+</sc-if>
+<sc-if value="{{s.txtPills}}" hint-placeholder-val="{{false}}">
+<sc-if value="{{s.pillsEditing}}" hint-placeholder-val="{{false}}">
+<textarea data-path="{{s.pBody}}" value="{{s.body}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyM}}" onBlur="{{s.pillsBlur}}" autoFocus="{{true}}" placeholder="{{s.phBody}}" aria-label="Section text" rows="1" style="width:100%;margin-top:9px;font-size:13.5px;line-height:1.62;color:#3B3833"></textarea>
+</sc-if>
+<sc-if value="{{s.pillsIdle}}" hint-placeholder-val="{{false}}">
+<div role="button" tabIndex="0" onClick="{{s.editPills}}" onFocus="{{s.editPills}}" aria-label="Edit list (comma-separated)" title="Click to edit" style="display:flex;flex-wrap:wrap;gap:7px;margin-top:11px;cursor:text;min-height:24px;border-radius:4px">
+<sc-for list="{{s.pills}}" as="pl" hint-placeholder-count="5">
+<span style="border:1px solid #D8D4CC;border-radius:999px;padding:4px 11px;font-size:11.5px;color:#3B3833">{{pl.t}}</span>
+</sc-for>
+<sc-if value="{{s.pillsEmpty}}" hint-placeholder-val="{{false}}"><span style="font-size:13.5px;color:#A9A29A;padding:4px 0">{{s.phBody}}</span></sc-if>
+</div>
+</sc-if>
+</sc-if>
+<sc-if value="{{s.isEntries}}" hint-placeholder-val="{{false}}">
+<div style="border-left:{{s.entRail}};padding-left:{{s.entRailPad}}">
+<sc-for list="{{s.entries}}" as="ent" hint-placeholder-count="2">
+<div class="ent" style="position:relative;margin-top:16px;display:{{s.entDisp}};grid-template-columns:112px 1fr;gap:0 14px">
+<div class="ectls" style="position:absolute;left:{{s.ectlLeft}};top:0;display:flex;flex-direction:column;gap:2px;padding:2px {{s.ectlPad}} 6px 0">
+<button onClick="{{ent.openLink}}" aria-label="Add or edit entry link" title="Add or edit link" style="width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:#8A857D" style-hover="background:#EFECE6;color:#3F3B35"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 7.2 7.2 4.8"></path><path d="M5.5 3.6l1-1a2 2 0 0 1 2.9 2.9l-1 1"></path><path d="M6.5 8.4l-1 1a2 2 0 0 1-2.9-2.9l1-1"></path></svg></button>
+<button onClick="{{ent.del}}" aria-label="Delete entry" title="Delete entry" style="width:22px;height:22px;display:grid;place-items:center;border-radius:6px;color:#8A857D" style-hover="background:#F8EEEC;color:#B04A42"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h8"></path><path d="M4.5 3.5v-1h3v1"></path><path d="M3.2 3.5l.5 6.2h4.6l.5-6.2"></path></svg></button>
+</div>
+<sc-if value="{{s.entTimeline}}" hint-placeholder-val="{{false}}"><span style="position:absolute;left:-21px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--acc,#3E5C76)"></span></sc-if>
+<sc-if value="{{s.entDatesLeft}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-size:12px;padding-top:3px">
+<button onClick="{{ent.openStart}}" title="Set start date" style="color:{{ent.startCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.startLbl}}</button>
+<button onClick="{{ent.openEnd}}" title="Set end date" style="color:{{ent.endCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.endLbl}}</button>
+</div>
+</sc-if>
+<div style="min-width:0">
+<sc-if value="{{s.entClassic}}" hint-placeholder-val="{{true}}">
+<div style="display:flex;align-items:baseline;gap:14px">
+<input data-path="{{ent.pT}}" value="{{ent.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phT}}" aria-label="Entry title" style="flex:1;min-width:60px;font-size:15px;font-weight:600;color:#2E2B26"></input>
+<span style="white-space:nowrap;font-size:12.5px;display:inline-flex;align-items:baseline;gap:5px">
+<button onClick="{{ent.openStart}}" title="Set start date" style="color:{{ent.startCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.startLbl}}</button>
+<span style="color:#B5AFA5">–</span>
+<button onClick="{{ent.openEnd}}" title="Set end date" style="color:{{ent.endCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.endLbl}}</button>
+</span>
+</div>
+<input data-path="{{ent.pS}}" value="{{ent.subtitle}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phS}}" aria-label="Organization" style="display:block;width:100%;font-size:13.5px;color:#6B665E;margin-top:3px"></input>
+</sc-if>
+<sc-if value="{{s.entTimeline}}" hint-placeholder-val="{{false}}">
+<div style="font-size:11.5px;display:flex;align-items:baseline;gap:5px">
+<button onClick="{{ent.openStart}}" title="Set start date" style="color:{{ent.startCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.startLbl}}</button>
+<span style="color:#B5AFA5">–</span>
+<button onClick="{{ent.openEnd}}" title="Set end date" style="color:{{ent.endCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.endLbl}}</button>
+</div>
+<input data-path="{{ent.pT}}" value="{{ent.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phT}}" aria-label="Entry title" style="display:block;width:100%;font-size:15px;font-weight:600;color:#2E2B26;margin-top:2px"></input>
+<input data-path="{{ent.pS}}" value="{{ent.subtitle}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phS}}" aria-label="Organization" style="display:block;width:100%;font-size:13px;color:#6B665E;margin-top:2px"></input>
+</sc-if>
+<sc-if value="{{s.entDatesLeft}}" hint-placeholder-val="{{false}}">
+<input data-path="{{ent.pT}}" value="{{ent.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phT}}" aria-label="Entry title" style="display:block;width:100%;font-size:15px;font-weight:600;color:#2E2B26"></input>
+<input data-path="{{ent.pS}}" value="{{ent.subtitle}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phS}}" aria-label="Organization" style="display:block;width:100%;font-size:13px;color:#6B665E;margin-top:2px"></input>
+</sc-if>
+<sc-if value="{{s.entCompact}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+<input data-path="{{ent.pT}}" value="{{ent.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phT}}" aria-label="Entry title" style="min-width:60px;font-size:14px;font-weight:600;color:#2E2B26"></input>
+<input data-path="{{ent.pS}}" value="{{ent.subtitle}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phS}}" aria-label="Organization" style="flex:1;min-width:90px;font-size:13px;color:#6B665E"></input>
+<span style="white-space:nowrap;font-size:12px;display:inline-flex;align-items:baseline;gap:5px;margin-left:auto">
+<button onClick="{{ent.openStart}}" title="Set start date" style="color:{{ent.startCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.startLbl}}</button>
+<span style="color:#B5AFA5">–</span>
+<button onClick="{{ent.openEnd}}" title="Set end date" style="color:{{ent.endCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.endLbl}}</button>
+</span>
+</div>
+</sc-if>
+<sc-if value="{{s.entCompanyFirst}}" hint-placeholder-val="{{false}}">
+<input data-path="{{ent.pS}}" value="{{ent.subtitle}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phS}}" aria-label="Organization" style="display:block;width:100%;font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--acc,#3E5C76)"></input>
+<div style="display:flex;align-items:baseline;gap:14px;margin-top:2px">
+<input data-path="{{ent.pT}}" value="{{ent.title}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="{{ent.phT}}" aria-label="Entry title" style="flex:1;min-width:60px;font-size:15px;font-weight:700;color:#26231F"></input>
+<span style="white-space:nowrap;font-size:12.5px;display:inline-flex;align-items:baseline;gap:5px">
+<button onClick="{{ent.openStart}}" title="Set start date" style="color:{{ent.startCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.startLbl}}</button>
+<span style="color:#B5AFA5">–</span>
+<button onClick="{{ent.openEnd}}" title="Set end date" style="color:{{ent.endCol}};border-radius:4px;padding:0 2px" style-hover="background:#F0EDE7;color:#3F3B35">{{ent.endLbl}}</button>
+</span>
+</div>
+</sc-if>
+<sc-if value="{{ent.hasLink}}" hint-placeholder-val="{{false}}">
+<div style="margin-top:4px;font-size:12.5px"><a href="{{ent.linkHref}}" target="_blank" rel="noopener" style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom">{{ent.linkText}}</a></div>
+</sc-if>
+<textarea data-path="{{ent.pD}}" value="{{ent.desc}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyM}}" placeholder="{{ent.phD}}" aria-label="Description" rows="1" style="width:100%;margin-top:6px;font-size:13.5px;line-height:1.6;color:#3B3833;text-wrap:pretty"></textarea>
+<sc-if value="{{ent.hasContribs}}" hint-placeholder-val="{{false}}">
+<div style="margin-top:5px;display:flex;flex-direction:column;gap:2px">
+<sc-for list="{{ent.contribs}}" as="cb" hint-placeholder-count="2">
+<div class="cbrow" style="display:flex;align-items:baseline;gap:8px;padding-left:2px">
+<span style="color:var(--acc,#3E5C76);font-size:13px;line-height:1.6">•</span>
+<input data-path="{{cb.path}}" value="{{cb.val}}" onChange="{{onEdit}}" onFocus="{{onFocusF}}" onKeyDown="{{onKeyS}}" placeholder="Contribution or achievement…" aria-label="Contribution" style="flex:1;min-width:60px;font-size:13.5px;line-height:1.6;color:#3B3833"></input>
+<button class="cbdel" onClick="{{cb.del}}" aria-label="Delete contribution" title="Delete contribution" style="width:18px;height:18px;display:grid;place-items:center;border-radius:5px;color:#948E84;align-self:center" style-hover="background:#F8EEEC;color:#B04A42"><svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l6 6M8 2l-6 6"></path></svg></button>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<button class="adde" onClick="{{ent.addContrib}}" style="margin-top:4px;font-size:11.5px;font-weight:600;color:#8A857C;display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:5px" style-hover="color:var(--acc,#3E5C76);background:color-mix(in oklab,var(--acc,#3E5C76) 6%,transparent)">+ Add contribution</button>
+</div>
+</div>
+</sc-for>
+</div>
+<button class="adde" onClick="{{s.addEntry}}" style="margin-top:12px;font-size:12.5px;font-weight:600;color:var(--acc,#3E5C76);display:inline-flex;align-items:center;gap:5px;padding:3px 6px;border-radius:6px" style-hover="background:color-mix(in oklab,var(--acc,#3E5C76) 7%,transparent)">+ {{s.addLbl}}</button>
+</sc-if>
+</section>
+</sc-for>
+<div style="position:relative;margin-top:34px">
+<button class="adds" onClick="{{openAdd}}" style="width:100%;padding:9px;border:1px dashed #D5D0C6;border-radius:8px;color:#8A857C;font-size:12.5px;font-weight:600;background:none" style-hover="border-color:var(--acc,#3E5C76);color:var(--acc,#3E5C76);background:color-mix(in oklab,var(--acc,#3E5C76) 4%,transparent)">+ Add section</button>
+<sc-if value="{{addOpen}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="dialog" aria-label="Add section" onKeyDown="{{addKey}}" style="position:absolute;left:50%;transform:translateX(-50%);bottom:46px;z-index:50;width:560px;max-width:96%;box-sizing:border-box;background:#fff;border:1px solid #E2DDD4;border-radius:12px;box-shadow:0 14px 40px -12px rgba(30,27,22,.3);padding:12px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;padding:2px 4px 9px">
+<div style="font-size:12px;font-weight:700;color:#54504A">Add a section</div>
+<div style="font-size:11px;color:#9A948A">Pick a section, then a style</div>
+</div>
+<div style="display:flex;gap:12px;align-items:stretch">
+<div style="width:152px;flex:none;display:flex;flex-direction:column;gap:1px;border-right:1px solid #F0EDE7;padding-right:10px">
+<sc-for list="{{pickTypes}}" as="it" hint-placeholder-count="6">
+<button onClick="{{it.pick}}" disabled="{{it.dis}}" style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;width:100%;text-align:left;padding:6px 8px;border-radius:6px;font-size:12.5px;background:{{it.bg}};color:{{it.fg}};font-weight:{{it.fw}}" style-hover="background:#F3F1EB"><span>{{it.label}}</span><span style="font-size:10.5px;color:#A9A29A;flex:none">{{it.note}}</span></button>
+</sc-for>
+</div>
+<div style="flex:1;min-width:0">
+<sc-if value="{{pickNone}}" hint-placeholder-val="{{true}}">
+<div style="min-height:180px;height:100%;display:grid;place-items:center;font-size:12px;color:#A9A29A;text-align:center;padding:0 24px;line-height:1.5">Select a section on the left to preview its styles</div>
+</sc-if>
+<sc-if value="{{pickIsCustom}}" hint-placeholder-val="{{false}}">
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+<input value="{{addTitle}}" onChange="{{onAddTitle}}" autoFocus="{{true}}" placeholder="Section title" aria-label="Custom section title" style="flex:1;min-width:0;field-sizing:fixed;border:1px solid #D8D3CA;border-radius:6px;padding:6px 9px;margin:0;font-size:13px;background:#fff" style-focus="border-color:var(--acc,#3E5C76);background:#fff;box-shadow:0 0 0 3px color-mix(in oklab,var(--acc,#3E5C76) 12%,transparent)"></input>
+<span style="font-size:11px;color:#9A948A;flex:none">then pick a style</span>
+</div>
+</sc-if>
+<sc-if value="{{pickSel}}" hint-placeholder-val="{{false}}">
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+<sc-for list="{{pickStyles}}" as="st" hint-placeholder-count="4">
+<button onClick="{{st.pick}}" disabled="{{st.dis}}" title="Add with this style" style="text-align:left;border:1px solid #E6E2DA;border-radius:8px;padding:9px 10px;background:#fff" style-hover="border-color:var(--acc,#3E5C76);background:color-mix(in oklab,var(--acc,#3E5C76) 3%,#fff)">
+<div style="height:56px;overflow:hidden;pointer-events:none;margin-bottom:7px">
+<sc-if value="{{st.cCl}}" hint-placeholder-val="{{false}}"><div><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76);border-bottom:1px solid #E6E2DA;padding-bottom:3px">HEADING</div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:8px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:92%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:58%"></div></div></sc-if>
+<sc-if value="{{st.cSd}}" hint-placeholder-val="{{false}}"><div style="display:grid;grid-template-columns:34px 1fr;gap:8px;padding-top:4px"><div style="font-size:7px;font-weight:700;letter-spacing:.1em;color:var(--acc,#3E5C76)">HEAD</div><div><div style="height:4px;background:#E3DFD7;border-radius:2px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:90%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:62%"></div></div></div></sc-if>
+<sc-if value="{{st.cTn}}" hint-placeholder-val="{{false}}"><div style="background:color-mix(in oklab,var(--acc,#3E5C76) 6%,#fff);border-radius:6px;padding:7px 8px"><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76)">HEADING</div><div style="height:4px;background:#DFDAD1;border-radius:2px;margin-top:6px"></div><div style="height:4px;background:#DFDAD1;border-radius:2px;margin-top:4px;width:78%"></div></div></sc-if>
+<sc-if value="{{st.cEd}}" hint-placeholder-val="{{false}}"><div style="border-top:1px solid #E6E2DA;border-bottom:1px solid #E6E2DA;padding:8px 0;margin-top:4px"><div style="height:5px;background:#C9C4BB;border-radius:2px"></div><div style="height:5px;background:#C9C4BB;border-radius:2px;margin-top:5px;width:84%"></div><div style="height:5px;background:#C9C4BB;border-radius:2px;margin-top:5px;width:52%"></div></div></sc-if>
+<sc-if value="{{st.cCe}}" hint-placeholder-val="{{false}}"><div><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76);border-bottom:1px solid #E6E2DA;padding-bottom:3px;text-align:left">HEADING</div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin:14px auto 0;width:55%"></div></div></sc-if>
+<sc-if value="{{st.cPl}}" hint-placeholder-val="{{false}}"><div><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76);border-bottom:1px solid #E6E2DA;padding-bottom:3px">HEADING</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:7px"><span style="width:34px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:26px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:40px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:30px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:22px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span></div></div></sc-if>
+<sc-if value="{{st.eCl}}" hint-placeholder-val="{{false}}"><div style="padding-top:2px"><div style="display:flex;justify-content:space-between;align-items:center"><div style="height:5px;background:#B9B3A9;border-radius:2px;width:55%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;width:36px"></div></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:5px;width:44%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:7px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:86%"></div></div></sc-if>
+<sc-if value="{{st.eTl}}" hint-placeholder-val="{{false}}"><div style="border-left:2px solid #E6E2DA;padding-left:9px;position:relative;margin-top:2px;margin-left:3px"><span style="position:absolute;left:-4px;top:1px;width:6px;height:6px;border-radius:50%;background:var(--acc,#3E5C76)"></span><div style="height:3.5px;background:#E3DFD7;border-radius:2px;width:38px"></div><div style="height:5px;background:#B9B3A9;border-radius:2px;margin-top:5px;width:70%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:5px;width:88%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:60%"></div></div></sc-if>
+<sc-if value="{{st.eDl}}" hint-placeholder-val="{{false}}"><div style="display:grid;grid-template-columns:34px 1fr;gap:7px;padding-top:3px"><div><div style="height:3.5px;background:#E3DFD7;border-radius:2px"></div><div style="height:3.5px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:80%"></div></div><div><div style="height:5px;background:#B9B3A9;border-radius:2px;width:75%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:5px;width:55%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:6px"></div></div></div></sc-if>
+<sc-if value="{{st.eCp}}" hint-placeholder-val="{{false}}"><div style="padding-top:3px"><div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F0EDE7"><div style="height:4.5px;background:#B9B3A9;border-radius:2px;width:58%"></div><div style="height:3.5px;background:#E3DFD7;border-radius:2px;width:28px"></div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><div style="height:4.5px;background:#B9B3A9;border-radius:2px;width:48%"></div><div style="height:3.5px;background:#E3DFD7;border-radius:2px;width:28px"></div></div></div></sc-if>
+<sc-if value="{{st.eCf}}" hint-placeholder-val="{{false}}"><div style="padding-top:2px"><div style="font-size:6.5px;font-weight:700;letter-spacing:.11em;color:var(--acc,#3E5C76)">COMPANY</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><div style="height:5.5px;background:#8F897F;border-radius:2px;width:58%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;width:34px"></div></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:7px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:70%"></div></div></sc-if>
+</div>
+<div style="font-size:11px;font-weight:600;color:#54504A">{{st.name}}</div>
+</button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+<div class="no-print" style="width:794px;max-width:100%;margin:16px auto 0;font-size:11.5px;color:#9A948A;line-height:1.65;text-align:center">Mockup notes — editing controls appear on hover or keyboard focus (or turn on “Always show controls” in Tweaks). The month picker stands in for react-datepicker’s showMonthYearPicker. Printing hides all editing UI.</div>
+<sc-if value="{{anyPop}}" hint-placeholder-val="{{false}}"><div style="position:fixed;inset:0;z-index:40" onClick="{{closePop}}"></div></sc-if>
+<sc-if value="{{dpOpen}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="dialog" aria-label="Choose month and year" onKeyDown="{{popKey}}" style="position:absolute;z-index:50;left:{{dp.x}}px;top:{{dp.y}}px;width:256px;box-sizing:border-box;background:#fff;border:1px solid #E2DDD4;border-radius:10px;box-shadow:0 12px 34px -10px rgba(30,27,22,.3);padding:12px">
+<div style="display:flex;align-items:center;justify-content:space-between">
+<button onClick="{{dp.prev}}" aria-label="Previous year" style="width:24px;height:24px;display:grid;place-items:center;border-radius:6px;color:#6B665E" style-hover="background:#F3F1EB"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 2.5 4 6l3.5 3.5"></path></svg></button>
+<span style="font-size:13.5px;font-weight:700;color:#2E2B26">{{dp.year}}</span>
+<button onClick="{{dp.next}}" aria-label="Next year" style="width:24px;height:24px;display:grid;place-items:center;border-radius:6px;color:#6B665E" style-hover="background:#F3F1EB"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.5 8 6 4.5 9.5"></path></svg></button>
+</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:10px">
+<sc-for list="{{dp.months}}" as="m" hint-placeholder-count="12">
+<button onClick="{{m.pick}}" style="padding:7px 0;border-radius:6px;font-size:12.5px;background:{{m.bg}};color:{{m.fg}};font-weight:{{m.fw}}" style-hover="box-shadow:inset 0 0 0 1px var(--acc,#3E5C76)">{{m.lbl}}</button>
+</sc-for>
+</div>
+<sc-if value="{{dp.err}}" hint-placeholder-val="{{false}}"><div role="alert" style="margin-top:9px;font-size:12px;color:#B04A42;line-height:1.45">{{dp.err}}</div></sc-if>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:11px">
+<button onClick="{{dp.clear}}" style="font-size:12.5px;color:#8A857C;padding:4px 8px;border-radius:6px" style-hover="background:#F3F1EB;color:#54504A">Clear</button>
+<sc-if value="{{dp.isEnd}}" hint-placeholder-val="{{false}}">
+<button onClick="{{dp.present}}" style="font-size:12.5px;font-weight:600;padding:4px 12px;border-radius:6px;background:{{dp.presBg}};color:{{dp.presFg}}" style-hover="filter:brightness(1.05)">Present</button>
+</sc-if>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{lpOpen}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="dialog" aria-label="Edit link" onKeyDown="{{popKey}}" style="position:absolute;z-index:50;left:{{lp.x}}px;top:{{lp.y}}px;width:308px;box-sizing:border-box;background:#fff;border:1px solid #E2DDD4;border-radius:10px;box-shadow:0 12px 34px -10px rgba(30,27,22,.3);padding:13px">
+<div style="font-size:12px;font-weight:700;color:#54504A">{{lp.heading}}</div>
+<label style="display:block;margin-top:9px;font-size:11.5px;font-weight:600;color:#8A857C">URL
+<input value="{{lp.url}}" onChange="{{lp.onUrl}}" onKeyDown="{{lpKeySave}}" autoFocus="{{true}}" placeholder="example.com/portfolio" style="display:block;width:100%;box-sizing:border-box;margin:3px 0 0;field-sizing:fixed;border:1px solid #D8D3CA;border-radius:6px;padding:6px 8px;font-size:13px;font-weight:400;background:#fff" style-focus="border-color:var(--acc,#3E5C76);background:#fff;box-shadow:0 0 0 3px color-mix(in oklab,var(--acc,#3E5C76) 12%,transparent)"></input>
+</label>
+<label style="display:block;margin-top:8px;font-size:11.5px;font-weight:600;color:#8A857C">Display text <span style="font-weight:400">(optional — defaults to the URL)</span>
+<input value="{{lp.text}}" onChange="{{lp.onText}}" onKeyDown="{{lpKeySave}}" placeholder="Defaults to the URL" style="display:block;width:100%;box-sizing:border-box;margin:3px 0 0;field-sizing:fixed;border:1px solid #D8D3CA;border-radius:6px;padding:6px 8px;font-size:13px;font-weight:400;background:#fff" style-focus="border-color:var(--acc,#3E5C76);background:#fff;box-shadow:0 0 0 3px color-mix(in oklab,var(--acc,#3E5C76) 12%,transparent)"></input>
+</label>
+<sc-if value="{{lp.err}}" hint-placeholder-val="{{false}}"><div role="alert" style="margin-top:8px;font-size:12px;color:#B04A42;line-height:1.45">{{lp.err}}</div></sc-if>
+<div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+<button onClick="{{lp.save}}" style="background:var(--acc,#3E5C76);color:#fff;border-radius:6px;padding:5px 13px;font-size:12.5px;font-weight:600" style-hover="filter:brightness(1.08)">Save</button>
+<sc-if value="{{lp.canRemove}}" hint-placeholder-val="{{false}}"><button onClick="{{lp.remove}}" style="color:#B04A42;font-size:12.5px;font-weight:600;padding:5px 8px;border-radius:6px" style-hover="background:#F8EEEC">Remove</button></sc-if>
+<button onClick="{{closePop}}" style="margin-left:auto;color:#8A857C;font-size:12.5px;padding:5px 8px;border-radius:6px" style-hover="background:#F3F1EB;color:#54504A">Cancel</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{cfOpen}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="alertdialog" aria-label="Confirm delete" onKeyDown="{{popKey}}" style="position:absolute;z-index:50;left:{{cf.x}}px;top:{{cf.y}}px;width:272px;box-sizing:border-box;background:#fff;border:1px solid #E2DDD4;border-radius:10px;box-shadow:0 12px 34px -10px rgba(30,27,22,.3);padding:13px">
+<div style="font-size:13px;font-weight:700;color:#2E2B26">{{cf.title}}</div>
+<div style="margin-top:4px;font-size:12.5px;color:#6B665E;line-height:1.5">{{cf.msg}}</div>
+<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+<button onClick="{{closePop}}" autoFocus="{{true}}" style="color:#54504A;font-size:12.5px;padding:5px 10px;border-radius:6px;border:1px solid #DDD8CF" style-hover="background:#F3F1EB">Cancel</button>
+<button onClick="{{cf.confirm}}" style="background:#B04A42;color:#fff;border-radius:6px;padding:5px 12px;font-size:12.5px;font-weight:600" style-hover="background:#9A3F38">Delete section</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{rpOpen}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="dialog" aria-label="Section style" onKeyDown="{{popKey}}" style="position:absolute;z-index:50;left:{{rp.x}}px;top:{{rp.y}}px;width:320px;box-sizing:border-box;background:#fff;border:1px solid #E2DDD4;border-radius:12px;box-shadow:0 14px 40px -12px rgba(30,27,22,.3);padding:12px">
+<div style="font-size:12px;font-weight:700;color:#54504A;margin-bottom:9px">Style — {{rp.secTitle}}</div>
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+<sc-for list="{{rp.styles}}" as="st" hint-placeholder-count="4">
+<button onClick="{{st.pick}}" title="{{st.name}}" style="text-align:left;border:1px solid {{st.brd}};border-radius:8px;padding:9px 10px;background:{{st.bgc}}" style-hover="border-color:var(--acc,#3E5C76)">
+<div style="height:56px;overflow:hidden;pointer-events:none;margin-bottom:7px">
+<sc-if value="{{st.cCl}}" hint-placeholder-val="{{false}}"><div><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76);border-bottom:1px solid #E6E2DA;padding-bottom:3px">HEADING</div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:8px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:92%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:58%"></div></div></sc-if>
+<sc-if value="{{st.cSd}}" hint-placeholder-val="{{false}}"><div style="display:grid;grid-template-columns:34px 1fr;gap:8px;padding-top:4px"><div style="font-size:7px;font-weight:700;letter-spacing:.1em;color:var(--acc,#3E5C76)">HEAD</div><div><div style="height:4px;background:#E3DFD7;border-radius:2px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:90%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:62%"></div></div></div></sc-if>
+<sc-if value="{{st.cTn}}" hint-placeholder-val="{{false}}"><div style="background:color-mix(in oklab,var(--acc,#3E5C76) 6%,#fff);border-radius:6px;padding:7px 8px"><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76)">HEADING</div><div style="height:4px;background:#DFDAD1;border-radius:2px;margin-top:6px"></div><div style="height:4px;background:#DFDAD1;border-radius:2px;margin-top:4px;width:78%"></div></div></sc-if>
+<sc-if value="{{st.cEd}}" hint-placeholder-val="{{false}}"><div style="border-top:1px solid #E6E2DA;border-bottom:1px solid #E6E2DA;padding:8px 0;margin-top:4px"><div style="height:5px;background:#C9C4BB;border-radius:2px"></div><div style="height:5px;background:#C9C4BB;border-radius:2px;margin-top:5px;width:84%"></div><div style="height:5px;background:#C9C4BB;border-radius:2px;margin-top:5px;width:52%"></div></div></sc-if>
+<sc-if value="{{st.cCe}}" hint-placeholder-val="{{false}}"><div><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76);border-bottom:1px solid #E6E2DA;padding-bottom:3px;text-align:left">HEADING</div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin:14px auto 0;width:55%"></div></div></sc-if>
+<sc-if value="{{st.cPl}}" hint-placeholder-val="{{false}}"><div><div style="font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--acc,#3E5C76);border-bottom:1px solid #E6E2DA;padding-bottom:3px">HEADING</div><div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:7px"><span style="width:34px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:26px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:40px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:30px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span><span style="width:22px;height:11px;border:1px solid #D8D4CC;border-radius:999px"></span></div></div></sc-if>
+<sc-if value="{{st.eCl}}" hint-placeholder-val="{{false}}"><div style="padding-top:2px"><div style="display:flex;justify-content:space-between;align-items:center"><div style="height:5px;background:#B9B3A9;border-radius:2px;width:55%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;width:36px"></div></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:5px;width:44%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:7px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:86%"></div></div></sc-if>
+<sc-if value="{{st.eTl}}" hint-placeholder-val="{{false}}"><div style="border-left:2px solid #E6E2DA;padding-left:9px;position:relative;margin-top:2px;margin-left:3px"><span style="position:absolute;left:-4px;top:1px;width:6px;height:6px;border-radius:50%;background:var(--acc,#3E5C76)"></span><div style="height:3.5px;background:#E3DFD7;border-radius:2px;width:38px"></div><div style="height:5px;background:#B9B3A9;border-radius:2px;margin-top:5px;width:70%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:5px;width:88%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:60%"></div></div></sc-if>
+<sc-if value="{{st.eDl}}" hint-placeholder-val="{{false}}"><div style="display:grid;grid-template-columns:34px 1fr;gap:7px;padding-top:3px"><div><div style="height:3.5px;background:#E3DFD7;border-radius:2px"></div><div style="height:3.5px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:80%"></div></div><div><div style="height:5px;background:#B9B3A9;border-radius:2px;width:75%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:5px;width:55%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:6px"></div></div></div></sc-if>
+<sc-if value="{{st.eCp}}" hint-placeholder-val="{{false}}"><div style="padding-top:3px"><div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F0EDE7"><div style="height:4.5px;background:#B9B3A9;border-radius:2px;width:58%"></div><div style="height:3.5px;background:#E3DFD7;border-radius:2px;width:28px"></div></div><div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0"><div style="height:4.5px;background:#B9B3A9;border-radius:2px;width:48%"></div><div style="height:3.5px;background:#E3DFD7;border-radius:2px;width:28px"></div></div></div></sc-if>
+<sc-if value="{{st.eCf}}" hint-placeholder-val="{{false}}"><div style="padding-top:2px"><div style="font-size:6.5px;font-weight:700;letter-spacing:.11em;color:var(--acc,#3E5C76)">COMPANY</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><div style="height:5.5px;background:#8F897F;border-radius:2px;width:58%"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;width:34px"></div></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:7px"></div><div style="height:4px;background:#E3DFD7;border-radius:2px;margin-top:4px;width:70%"></div></div></sc-if>
+</div>
+<div style="font-size:11px;font-weight:600;color:#54504A;display:flex;align-items:center;gap:5px">{{st.name}}<sc-if value="{{st.sel}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--acc,#3E5C76)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.3l2.3 2.3L9.5 3.8"></path></svg></sc-if></div>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{tpOpen}}" hint-placeholder-val="{{false}}">
+<div class="pop" role="dialog" aria-label="Choose a template" onKeyDown="{{popKey}}" style="position:absolute;z-index:50;left:{{tp.x}}px;top:{{tp.y}}px;width:300px;box-sizing:border-box;background:#fff;border:1px solid #E2DDD4;border-radius:12px;box-shadow:0 14px 40px -12px rgba(30,27,22,.3);padding:10px">
+<div style="font-size:12px;font-weight:700;color:#54504A;margin-bottom:8px;padding:0 2px">Resume template</div>
+<div style="display:flex;flex-direction:column;gap:4px">
+<sc-for list="{{tp.items}}" as="it" hint-placeholder-count="6">
+<button onClick="{{it.pick}}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 9px;border:1px solid {{it.brd}};border-radius:8px;background:#fff" style-hover="background:#F6F4EF">
+<span style="width:15px;height:15px;flex:none;border-radius:50%;background:{{it.dot}}"></span>
+<span style="flex:1;min-width:0">
+<span style="display:block;font-size:12.5px;font-weight:600;color:#2E2B26;font-family:{{it.font}}">{{it.name}}</span>
+<span style="display:block;font-size:10.5px;color:#9A948A;font-family:{{it.font}};margin-top:1px">The quick brown fox</span>
+</span>
+<sc-if value="{{it.sel}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="var(--acc,#3E5C76)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5l2.7 2.7L11 4.5"></path></svg></sc-if>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#3E5C76&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;#3E5C76&quot;, &quot;#4E6650&quot;, &quot;#6E4A52&quot;, &quot;#44484E&quot;], &quot;section&quot;: &quot;Style&quot;},
+  &quot;sampleData&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Content&quot;},
+  &quot;alwaysShowControls&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Mockup&quot;}
+}">
+const PX_PER_IN = 794 / 8.5;
+function firstFont(stack) { return (stack || 'Helvetica').split(',')[0].replace(/["']/g, '').trim(); }
+function hexToRgb(hex) { const h = (hex || '#3E5C76').replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this._uid = 100;
+    this.MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    this.ML = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    this.PHE = {
+      experience: ['Job title','Company','Describe your role and achievements…'],
+      education: ['Degree','School or university','Notes, honors, coursework…'],
+      projects: ['Project name','Role or technologies','Describe the project…']
+    };
+    this.PHB = {
+      summary: 'Write a 2–3 sentence professional summary…',
+      skills: 'List your key skills, separated by commas…',
+      certifications: 'List your certifications…',
+      awards: 'List awards and honors…',
+      languages: 'Languages you speak and proficiency levels…',
+      references: 'Name, role, company, and contact for each reference…',
+      custom: 'Add content…'
+    };
+    this.CAT = [
+      { key: 'summary', label: 'Summary', kind: 'text' },
+      { key: 'experience', label: 'Experience', kind: 'entries' },
+      { key: 'education', label: 'Education', kind: 'entries' },
+      { key: 'projects', label: 'Projects', kind: 'entries' },
+      { key: 'skills', label: 'Skills', kind: 'text' },
+      { key: 'certifications', label: 'Certifications', kind: 'text' },
+      { key: 'awards', label: 'Awards & Achievements', kind: 'text' },
+      { key: 'languages', label: 'Languages', kind: 'text' },
+      { key: 'references', label: 'References', kind: 'text' },
+      { key: 'custom', label: 'Custom section…', kind: 'text' }
+    ];
+    this.SNAMES = { classic: 'Classic ruled', side: 'Side label', tinted: 'Tinted panel', editorial: 'Editorial', center: 'Centered note', pills: 'Pill tags', timeline: 'Timeline rail', datesLeft: 'Dates left', compact: 'Compact rows', companyFirst: 'Company first' };
+    this.TSTYLES = {
+      entries: ['classic', 'timeline', 'datesLeft', 'compact', 'companyFirst'],
+      summary: ['classic', 'side', 'tinted', 'editorial'],
+      skills: ['classic', 'pills', 'side', 'tinted', 'editorial'],
+      languages: ['classic', 'pills', 'side', 'tinted', 'center'],
+      certifications: ['classic', 'side', 'tinted', 'center', 'editorial'],
+      awards: ['classic', 'side', 'tinted', 'center', 'editorial'],
+      references: ['classic', 'center', 'side', 'tinted', 'editorial'],
+      custom: ['classic', 'side', 'tinted', 'editorial', 'center']
+    };
+    this.TEMPLATES = [
+      { id: 'openSans', name: 'Open Sans Modern', font: "'Open Sans',system-ui,sans-serif", accent: null, header: 'left' },
+      { id: 'arial', name: 'Arial ATS Classic', font: "Arial,Helvetica,sans-serif", accent: '#2C4A6E', header: 'left' },
+      { id: 'georgia', name: 'Georgia Traditional', font: "Georgia,'Times New Roman',serif", accent: '#6E3B3B', header: 'center' },
+      { id: 'verdana', name: 'Verdana Minimal', font: "Verdana,Tahoma,sans-serif", accent: '#44484E', header: 'split' },
+      { id: 'times', name: 'Times Executive', font: "'Times New Roman',Times,serif", accent: '#1F3A5F', header: 'center' },
+      { id: 'tahoma', name: 'Tahoma Bold', font: "Tahoma,Geneva,sans-serif", accent: '#3F5940', header: 'banner' }
+    ];
+    this.state = { data: this.initData(), pop: null, editBody: null, margins: { top: 0.75, right: 0.75, bottom: 0.75, left: 0.75 }, showMargins: false };
+  }
+  get sampleOn() { return this.props.sampleData !== false; }
+  initData() { return this.sampleOn ? this.sample() : this.blank(); }
+  componentDidUpdate(pp) {
+    if ((pp.sampleData !== false) !== this.sampleOn) this.setState({ data: this.initData(), pop: null });
+  }
+  uid() { return 'x' + (++this._uid); }
+  blankEntry() { return { id: this.uid(), title: '', subtitle: '', start: null, end: null, desc: '', contribs: [], link: null }; }
+  blank() {
+    return { dateFormat: 'MMM', templateId: 'openSans', header: { name: '', title: '', contacts: [
+      { kind: 'email', text: '', url: null }, { kind: 'phone', text: '', url: null }, { kind: 'location', text: '', url: null }
+    ]}, sections: [
+      { id: this.uid(), type: 'summary', kind: 'text', style: 'classic', title: 'Summary', body: '' },
+      { id: this.uid(), type: 'experience', kind: 'entries', style: 'classic', title: 'Experience', entries: [this.blankEntry()] },
+      { id: this.uid(), type: 'education', kind: 'entries', style: 'classic', title: 'Education', entries: [this.blankEntry()] },
+      { id: this.uid(), type: 'skills', kind: 'text', style: 'classic', title: 'Skills', body: '' }
+    ]};
+  }
+  sample() {
+    const d = this.blank();
+    d.header.name = 'Maya Chen';
+    d.header.title = 'Senior Software Engineer';
+    d.header.contacts[0].text = 'hello@mayachen.dev';
+    d.header.contacts[1].text = '+1 (415) 555-0192';
+    d.header.contacts[2].text = 'San Francisco, CA';
+    d.sections[0].body = 'Software engineer with 8 years of experience building web applications and developer tools. Led frontend architecture for products serving 2M+ users, with a focus on design systems, performance, and mentoring.';
+    const e1 = this.blankEntry(), e2 = this.blankEntry(), ed = this.blankEntry();
+    e1.title = 'Senior Software Engineer'; e1.subtitle = 'Fieldstone Labs';
+    e1.start = { y: 2022, m: 3 }; e1.end = 'present';
+    e1.desc = 'Lead engineer on the design systems team; mentor three engineers.';
+    e1.contribs = ['Built a component library adopted across four products', 'Cut UI defect reports by 38% with visual regression testing', 'Drove the migration of 240k lines to TypeScript'];
+    e2.title = 'Software Engineer'; e2.subtitle = 'Copperline Software';
+    e2.start = { y: 2018, m: 7 }; e2.end = { y: 2022, m: 2 };
+    e2.desc = 'Built customer-facing analytics dashboards in React and Node.js. Reduced initial page load from 4.1s to 1.3s and introduced end-to-end testing that halved regression bugs.';
+    ed.title = 'B.S. Computer Science'; ed.subtitle = 'University of Washington';
+    ed.start = { y: 2014, m: 9 }; ed.end = { y: 2018, m: 6 };
+    ed.contribs = ['Dean\u2019s List, six quarters \u2014 graduated with honors'];
+    d.sections[1].entries = [e1, e2];
+    d.sections[2].entries = [ed];
+    d.sections[3].body = 'TypeScript, React, Node.js, GraphQL, design systems, accessibility, performance profiling, CI/CD';
+    return d;
+  }
+  fmt(dt) {
+    if (!dt) return '';
+    if (dt === 'present') return 'Present';
+    return (this.state.data.dateFormat === 'MMMM' ? this.ML : this.MS)[dt.m - 1] + ' ' + dt.y;
+  }
+  idx(dt) { return dt.y * 12 + (dt.m - 1); }
+  mut(fn) { const d = structuredClone(this.state.data); fn(d); this.setState({ data: d }); }
+  sp(path, val) { this.mut(d => { const ks = String(path).split('.'); let o = d; for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]]; o[ks[ks.length - 1]] = val; }); }
+  anchor(e, w, alignRight) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const rr = this._rootEl.getBoundingClientRect();
+    let x = (alignRight ? r.right - w : r.left) - rr.left;
+    x = Math.max(8, Math.min(x, rr.width - w - 8));
+    return { x, y: r.bottom - rr.top + 6 };
+  }
+  onEdit = (e) => this.sp(e.target.dataset.path, e.target.value);
+  onFocusF = (e) => { this._snap = { p: e.target.dataset.path, v: e.target.value }; };
+  esc(e) {
+    if (e.key === 'Escape' && this._snap && this._snap.p === e.target.dataset.path) {
+      e.preventDefault(); this.sp(this._snap.p, this._snap.v); e.target.blur();
+    }
+  }
+  onKeyS = (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } else this.esc(e); };
+  onKeyM = (e) => this.esc(e);
+  doPrint = () => window.print();
+  toggleMargins = () => this.setState(s => ({ showMargins: !s.showMargins }));
+  pageRef = (el) => { this._pageEl = el; };
+  startDrag = (dir) => (e) => {
+    e.preventDefault();
+    this._dragDir = dir;
+    this._dragRect = this._pageEl.getBoundingClientRect();
+    window.addEventListener('mousemove', this.onDragMove);
+    window.addEventListener('mouseup', this.onDragEnd);
+  };
+  onDragMove = (e) => {
+    if (!this._dragDir) return;
+    const r = this._dragRect; let val;
+    if (this._dragDir === 'top') val = (e.clientY - r.top) / PX_PER_IN;
+    else if (this._dragDir === 'bottom') val = (r.bottom - e.clientY) / PX_PER_IN;
+    else if (this._dragDir === 'left') val = (e.clientX - r.left) / PX_PER_IN;
+    else val = (r.right - e.clientX) / PX_PER_IN;
+    val = Math.max(0.25, Math.min(2, Math.round(val * 20) / 20));
+    this.setState(s => ({ margins: { ...s.margins, [this._dragDir]: val } }));
+  };
+  onDragEnd = () => { this._dragDir = null; window.removeEventListener('mousemove', this.onDragMove); window.removeEventListener('mouseup', this.onDragEnd); };
+
+  buildExportModel() {
+    const D = this.state.data;
+    const contacts = D.header.contacts.filter(c => c.text && c.text.trim()).map(c => ({ text: c.text, url: c.url || null }));
+    const sections = D.sections.map(s => ({
+      title: s.title || '', kind: s.kind,
+      body: s.kind === 'text' ? (s.body || '') : null,
+      entries: s.kind === 'entries' ? s.entries.map(en => ({
+        title: en.title || '', subtitle: en.subtitle || '',
+        dates: [this.fmt(en.start), this.fmt(en.end)].filter(Boolean).join(' \u2013 '),
+        desc: en.desc || '', contribs: (en.contribs || []).filter(c => c && c.trim()),
+        link: en.link || null
+      })) : null
+    }));
+    return { name: D.header.name || '', title: D.header.title || '', contacts, sections };
+  }
+  exportAccent() { const tpl = this.getTemplate(); return tpl.id === 'openSans' ? (this.props.accent ?? '#3E5C76') : (tpl.accent || '#3E5C76'); }
+
+  exportPDF = () => {
+    const jsPDFCtor = window.jspdf && window.jspdf.jsPDF;
+    if (!jsPDFCtor) { alert('PDF library failed to load \u2014 check your connection and try again.'); return; }
+    const m = this.state.margins;
+    const tpl = this.getTemplate();
+    const baseFont = /georgia|times/i.test(tpl.font) ? 'times' : 'helvetica';
+    const [ar, ag, ab] = hexToRgb(this.exportAccent());
+    const model = this.buildExportModel();
+    const doc = new jsPDFCtor({ unit: 'in', format: 'letter' });
+    const pageW = 8.5, pageH = 11;
+    const contentW = pageW - m.left - m.right;
+    let y = m.top;
+    const ensureRoom = (h) => { if (y + h > pageH - m.bottom) { doc.addPage(); y = m.top; } };
+    const writeLines = (text, size, opts) => {
+      opts = opts || {};
+      doc.setFont(baseFont, opts.style || 'normal');
+      doc.setFontSize(size);
+      doc.setTextColor(opts.color ? opts.color[0] : 40, opts.color ? opts.color[1] : 38, opts.color ? opts.color[2] : 34);
+      const indent = opts.indent || 0;
+      const lines = doc.splitTextToSize(text, contentW - indent);
+      const lh = (size / 72) * 1.32;
+      lines.forEach(line => { ensureRoom(lh); doc.text(line, m.left + indent, y); y += lh; });
+      y += (opts.gapAfter || 0);
+    };
+    doc.setFont(baseFont, 'bold'); doc.setFontSize(20); doc.setTextColor(30, 27, 22);
+    ensureRoom(0.3); doc.text(model.name || 'Your name', m.left, y); y += 0.3;
+    if (model.title) writeLines(model.title, 11, { color: [90, 90, 84], gapAfter: 0.06 });
+    if (model.contacts.length) {
+      doc.setFont(baseFont, 'normal'); doc.setFontSize(9.5); doc.setTextColor(70, 68, 65);
+      let cx = m.left; ensureRoom(0.2);
+      model.contacts.forEach((c, i) => {
+        const sep = i < model.contacts.length - 1 ? '   \u00b7   ' : '';
+        if (c.url) doc.textWithLink(c.text, cx, y, { url: c.url }); else doc.text(c.text, cx, y);
+        cx += doc.getTextWidth(c.text + sep);
+      });
+      y += 0.22;
+    }
+    y += 0.12;
+    model.sections.forEach(sec => {
+      ensureRoom(0.25);
+      doc.setDrawColor(ar, ag, ab);
+      doc.setFont(baseFont, 'bold'); doc.setFontSize(9.5); doc.setTextColor(ar, ag, ab);
+      doc.text((sec.title || '').toUpperCase(), m.left, y);
+      doc.setLineWidth(0.01); doc.line(m.left, y + 0.05, pageW - m.right, y + 0.05);
+      y += 0.2;
+      if (sec.kind === 'text') {
+        if (sec.body) writeLines(sec.body, 9.8, { color: [55, 52, 48], gapAfter: 0.14 });
+      } else {
+        (sec.entries || []).forEach(en => {
+          ensureRoom(0.2);
+          doc.setFont(baseFont, 'bold'); doc.setFontSize(11); doc.setTextColor(35, 33, 30);
+          doc.text(en.title || '', m.left, y);
+          if (en.dates) { doc.setFont(baseFont, 'normal'); doc.setFontSize(9); doc.setTextColor(120, 116, 108); doc.text(en.dates, pageW - m.right, y, { align: 'right' }); }
+          y += 0.17;
+          if (en.subtitle) writeLines(en.subtitle, 9.5, { style: 'italic', color: [100, 96, 90], gapAfter: 0.04 });
+          if (en.link) { doc.setFont(baseFont, 'normal'); doc.setTextColor(ar, ag, ab); doc.setFontSize(8.5); doc.textWithLink(en.link.text || en.link.url, m.left, y, { url: en.link.url }); y += 0.14; }
+          if (en.desc) writeLines(en.desc, 9.5, { color: [55, 52, 48], gapAfter: 0.03 });
+          en.contribs.forEach(c => writeLines('\u2022  ' + c, 9.5, { color: [55, 52, 48], indent: 0.12 }));
+          y += 0.12;
+        });
+      }
+    });
+    doc.save((model.name || 'resume').trim().replace(/\s+/g, '_') + '.pdf');
+  };
+
+  exportDocx = async () => {
+    const docxLib = window.docx;
+    if (!docxLib) { alert('DOCX library failed to load \u2014 check your connection and try again.'); return; }
+    const { Document, Packer, Paragraph, TextRun, ExternalHyperlink, BorderStyle, TabStopType } = docxLib;
+    const m = this.state.margins;
+    const tpl = this.getTemplate();
+    const font = firstFont(tpl.font);
+    const accentHex = this.exportAccent().replace('#', '');
+    const model = this.buildExportModel();
+    const twips = inch => Math.round(inch * 1440);
+    const contentTwips = twips(8.5 - m.left - m.right);
+    const children = [];
+    children.push(new Paragraph({ children: [new TextRun({ text: model.name || 'Your name', bold: true, size: 40, font })], spacing: { after: 60 } }));
+    if (model.title) children.push(new Paragraph({ children: [new TextRun({ text: model.title, size: 22, color: '5A5A54', font })], spacing: { after: 100 } }));
+    if (model.contacts.length) {
+      const runs = [];
+      model.contacts.forEach((c, i) => {
+        if (c.url) runs.push(new ExternalHyperlink({ link: c.url, children: [new TextRun({ text: c.text, size: 19, color: accentHex, font, underline: {} })] }));
+        else runs.push(new TextRun({ text: c.text, size: 19, color: '46443E', font }));
+        if (i < model.contacts.length - 1) runs.push(new TextRun({ text: '   \u00b7   ', size: 19, color: '46443E', font }));
+      });
+      children.push(new Paragraph({ children: runs, spacing: { after: 200 } }));
+    }
+    model.sections.forEach(sec => {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: (sec.title || '').toUpperCase(), bold: true, size: 19, color: accentHex, font })],
+        spacing: { before: 160, after: 80 },
+        border: { bottom: { color: 'E6E2DA', space: 4, style: BorderStyle.SINGLE, size: 4 } }
+      }));
+      if (sec.kind === 'text') {
+        if (sec.body) children.push(new Paragraph({ children: [new TextRun({ text: sec.body, size: 20, font })], spacing: { after: 140 } }));
+      } else {
+        (sec.entries || []).forEach(en => {
+          const headerRuns = [new TextRun({ text: en.title || '', bold: true, size: 22, font })];
+          if (en.dates) headerRuns.push(new TextRun({ text: '\t' + en.dates, size: 18, color: '78746C', font }));
+          children.push(new Paragraph({ children: headerRuns, tabStops: [{ type: TabStopType.RIGHT, position: contentTwips }], spacing: { after: 20 } }));
+          if (en.subtitle) children.push(new Paragraph({ children: [new TextRun({ text: en.subtitle, italics: true, size: 19, color: '64605A', font })], spacing: { after: 20 } }));
+          if (en.link) children.push(new Paragraph({ children: [new ExternalHyperlink({ link: en.link.url, children: [new TextRun({ text: en.link.text || en.link.url, size: 17, color: accentHex, font, underline: {} })] })], spacing: { after: 40 } }));
+          if (en.desc) children.push(new Paragraph({ children: [new TextRun({ text: en.desc, size: 19, font })], spacing: { after: 30 } }));
+          en.contribs.forEach(c => children.push(new Paragraph({ children: [new TextRun({ text: '\u2022  ' + c, size: 19, font })], indent: { left: 180 }, spacing: { after: 20 } })));
+          children.push(new Paragraph({ text: '', spacing: { after: 60 } }));
+        });
+      }
+    });
+    const doc = new Document({ sections: [{ properties: { page: { margin: { top: twips(m.top), right: twips(m.right), bottom: twips(m.bottom), left: twips(m.left) } } }, children }] });
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = (model.name || 'resume').trim().replace(/\s+/g, '_') + '.docx'; a.click();
+    URL.revokeObjectURL(url);
+  };
+  closePop = () => this.setState({ pop: null });
+  popKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); this.closePop(); } };
+  moveSec(si, dir) {
+    const j = si + dir;
+    if (j < 0 || j >= this.state.data.sections.length) return;
+    this.mut(d => { const s = d.sections.splice(si, 1)[0]; d.sections.splice(j, 0, s); });
+  }
+  hasContent(s) {
+    if (s.kind === 'text') return !!(s.body && s.body.trim());
+    return s.entries.some(en => [en.title, en.subtitle, en.desc].some(x => x && x.trim()) || en.start || en.end || en.link || (en.contribs || []).some(x => x && x.trim()));
+  }
+  reqDelSec(e, si) {
+    const s = this.state.data.sections[si];
+    if (this.hasContent(s)) {
+      const { x, y } = this.anchor(e, 272, false);
+      this.setState({ pop: { t: 'confirm', si, x, y } });
+    } else this.mut(d => d.sections.splice(si, 1));
+  }
+  addEntry(si) { this.mut(d => d.sections[si].entries.push(this.blankEntry())); }
+  delEntry(si, ei) { this.mut(d => d.sections[si].entries.splice(ei, 1)); }
+  getTemplate() { return this.TEMPLATES.find(t => t.id === this.state.data.templateId) || this.TEMPLATES[0]; }
+  setTemplate(id) { this.sp('templateId', id); this.setState({ pop: null }); }
+  openTemplatePicker(e) { const { x, y } = this.anchor(e, 300, true); this.setState({ pop: { t: 'template', x, y } }); }
+  styleThumbFlags(entriesKind, sid) {
+    return {
+      cCl: !entriesKind && sid === 'classic', cSd: sid === 'side', cTn: sid === 'tinted',
+      cEd: sid === 'editorial', cCe: sid === 'center', cPl: sid === 'pills',
+      eCl: entriesKind && sid === 'classic', eTl: sid === 'timeline',
+      eDl: sid === 'datesLeft', eCp: sid === 'compact', eCf: sid === 'companyFirst'
+    };
+  }
+  openRestyle(e, si) {
+    const { x, y } = this.anchor(e, 320, true);
+    this.setState({ pop: { t: 'restyle', si, x, y } });
+  }
+  addFromPicker(sid) {
+    const P = this.state.pop;
+    if (!P || !P.sel) return;
+    const def = this.CAT.find(c => c.key === P.sel);
+    const title = P.sel === 'custom' ? (P.title || '').trim() : def.label;
+    if (!title) return;
+    const type = P.sel === 'custom' ? 'custom' : P.sel;
+    this.mut(d => d.sections.push(def.kind === 'entries'
+      ? { id: this.uid(), type, kind: 'entries', style: sid, title, entries: [this.blankEntry()] }
+      : { id: this.uid(), type, kind: 'text', style: sid, title, body: '' }));
+    this.setState({ pop: null });
+  }
+  openDate(e, si, ei, which) {
+    const ent = this.state.data.sections[si].entries[ei];
+    const cur = ent[which], other = which === 'end' ? ent.start : ent.end;
+    const vy = (cur && cur !== 'present' && cur.y) || (other && other !== 'present' && other.y) || 2026;
+    const { x, y } = this.anchor(e, 256, true);
+    this.setState({ pop: { t: 'date', si, ei, which, vy, err: null, x, y } });
+  }
+  pickMonth(m) {
+    const p = this.state.pop;
+    const cand = { y: p.vy, m };
+    const ent = this.state.data.sections[p.si].entries[p.ei];
+    const other = p.which === 'start' ? ent.end : ent.start;
+    let err = null;
+    if (other && other !== 'present') {
+      if (p.which === 'end' && this.idx(cand) < this.idx(other)) err = 'End date can\u2019t be before the start date.';
+      if (p.which === 'start' && this.idx(cand) > this.idx(other)) err = 'Start date can\u2019t be after the end date.';
+    }
+    if (err) { this.setState({ pop: { ...p, err } }); return; }
+    this.spDate(cand);
+  }
+  spDate(v) {
+    const p = this.state.pop;
+    this.mut(d => { d.sections[p.si].entries[p.ei][p.which] = v; });
+    this.setState({ pop: null });
+  }
+  normUrl(raw) {
+    let u = String(raw || '').trim();
+    if (!u || /\s/.test(u)) return null;
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(u)) u = 'https://' + u;
+    let p; try { p = new URL(u); } catch (_) { return null; }
+    if (/^https?:$/.test(p.protocol) && !/^[^.]+(\.[^.]+)+$/.test(p.hostname)) return null;
+    return u;
+  }
+  openLinkPop(e, tgt) {
+    const { x, y } = this.anchor(e, 308, false);
+    let url = '', text = '', can = false;
+    if (tgt.ci != null) {
+      const c = this.state.data.header.contacts[tgt.ci];
+      url = c.url || ''; text = c.text || ''; can = !!c.url;
+    } else {
+      const l = this.state.data.sections[tgt.si].entries[tgt.ei].link;
+      if (l) { url = l.url; text = l.text; can = true; }
+    }
+    this.setState({ pop: { t: 'link', ...tgt, x, y, url, text, err: null, canRemove: can } });
+  }
+  saveLink() {
+    const p = this.state.pop;
+    const norm = this.normUrl(p.url);
+    if (!norm) { this.setState({ pop: { ...p, err: 'Enter a valid URL (e.g. example.com/portfolio).' } }); return; }
+    const txt = String(p.text || '').trim();
+    const plain = norm.replace(/^https?:\/\//, '');
+    this.mut(d => {
+      if (p.ci != null) {
+        const c = d.header.contacts[p.ci];
+        c.url = norm;
+        if (txt) c.text = txt; else if (!c.text.trim()) c.text = plain;
+      } else {
+        d.sections[p.si].entries[p.ei].link = { url: norm, text: txt || plain };
+      }
+    });
+    this.setState({ pop: null });
+  }
+  removeLink() {
+    const p = this.state.pop;
+    this.mut(d => {
+      if (p.ci != null) d.header.contacts[p.ci].url = null;
+      else d.sections[p.si].entries[p.ei].link = null;
+    });
+    this.setState({ pop: null });
+  }
+  renderVals() {
+    const D = this.state.data, P = this.state.pop;
+    const acc = 'var(--acc,#3E5C76)';
+    const mkC = (i) => {
+      const c = D.header.contacts[i];
+      return { isLink: !!c.url, noLink: !c.url, href: c.url || '', text: c.text,
+        path: 'header.contacts.' + i + '.text', openLink: (e) => this.openLinkPop(e, { ci: i }) };
+    };
+    const secs = D.sections.map((s, si) => {
+      const st = s.style || 'classic';
+      const v = {
+        id: s.id, title: s.title, pTitle: 'sections.' + si + '.title',
+        isText: s.kind === 'text', isEntries: s.kind === 'entries',
+        headTop: s.kind === 'entries' || st === 'classic' || st === 'center' || st === 'pills',
+        txtClassic: s.kind === 'text' && (st === 'classic' || st === 'center'),
+        bodyAlign: st === 'center' ? 'center' : 'left',
+        bodyColor: st === 'center' ? '#6B665E' : '#3B3833',
+        txtSide: s.kind === 'text' && st === 'side',
+        txtTinted: s.kind === 'text' && st === 'tinted',
+        txtEditorial: s.kind === 'text' && st === 'editorial',
+        txtPills: s.kind === 'text' && st === 'pills',
+        entClassic: s.kind === 'entries' && st === 'classic',
+        entTimeline: s.kind === 'entries' && st === 'timeline',
+        entDatesLeft: s.kind === 'entries' && st === 'datesLeft',
+        entCompact: s.kind === 'entries' && st === 'compact',
+        entCompanyFirst: s.kind === 'entries' && st === 'companyFirst',
+        entDisp: st === 'datesLeft' ? 'grid' : 'block',
+        entRail: st === 'timeline' ? '2px solid #E6E2DA' : '0',
+        entRailPad: st === 'timeline' ? '16px' : '0px',
+        ectlLeft: st === 'timeline' ? '-58px' : '-42px',
+        ectlPad: st === 'timeline' ? '36px' : '20px',
+        up: () => this.moveSec(si, -1), down: () => this.moveSec(si, 1),
+        upDis: si === 0, dnDis: si === D.sections.length - 1,
+        del: (e) => this.reqDelSec(e, si),
+        openStyle: (e) => this.openRestyle(e, si)
+      };
+      if (s.kind === 'text') {
+        v.pBody = 'sections.' + si + '.body'; v.body = s.body;
+        v.phBody = this.PHB[s.type] || this.PHB.custom;
+        v.pills = (s.body || '').split(',').map(x => x.trim()).filter(Boolean).map(t => ({ t }));
+        v.pillsEmpty = v.pills.length === 0;
+        v.pillsEditing = this.state.editBody === s.id;
+        v.pillsIdle = !v.pillsEditing;
+        v.editPills = () => this.setState({ editBody: s.id });
+        v.pillsBlur = () => this.setState({ editBody: null });
+      } else {
+        const ph = this.PHE[s.type] || ['Title', 'Organization', 'Description…'];
+        v.addLbl = { experience: 'Add position', education: 'Add education', projects: 'Add project' }[s.type] || 'Add entry';
+        v.addEntry = () => this.addEntry(si);
+        v.entries = s.entries.map((en, ei) => ({
+          id: en.id, title: en.title, subtitle: en.subtitle, desc: en.desc,
+          pT: 'sections.' + si + '.entries.' + ei + '.title',
+          pS: 'sections.' + si + '.entries.' + ei + '.subtitle',
+          pD: 'sections.' + si + '.entries.' + ei + '.desc',
+          phT: ph[0], phS: ph[1], phD: ph[2],
+          startLbl: this.fmt(en.start) || 'Start date', startCol: en.start ? '#6B665E' : '#A9A29A',
+          endLbl: this.fmt(en.end) || 'End date', endCol: en.end ? '#6B665E' : '#A9A29A',
+          openStart: (e) => this.openDate(e, si, ei, 'start'),
+          openEnd: (e) => this.openDate(e, si, ei, 'end'),
+          del: () => this.delEntry(si, ei),
+          openLink: (e) => this.openLinkPop(e, { si, ei }),
+          hasLink: !!en.link, linkHref: en.link ? en.link.url : '', linkText: en.link ? en.link.text : '',
+          hasContribs: (en.contribs || []).length > 0,
+          addContrib: () => this.mut(d => { const t = d.sections[si].entries[ei]; if (!t.contribs) t.contribs = []; t.contribs.push(''); }),
+          contribs: (en.contribs || []).map((c, ci) => ({
+            id: en.id + '-c' + ci, val: c,
+            path: 'sections.' + si + '.entries.' + ei + '.contribs.' + ci,
+            del: () => this.mut(d => d.sections[si].entries[ei].contribs.splice(ci, 1))
+          }))
+        }));
+      }
+      return v;
+    });
+    const fmtShortSel = D.dateFormat === 'MMM', fmtLongSel = !fmtShortSel;
+    let dp = null;
+    if (P && P.t === 'date') {
+      const ent = D.sections[P.si].entries[P.ei];
+      const cur = ent[P.which];
+      dp = {
+        x: P.x, y: P.y, year: String(P.vy), err: P.err || false, isEnd: P.which === 'end',
+        prev: () => this.setState({ pop: { ...this.state.pop, vy: Math.max(1950, this.state.pop.vy - 1), err: null } }),
+        next: () => this.setState({ pop: { ...this.state.pop, vy: Math.min(2040, this.state.pop.vy + 1), err: null } }),
+        months: this.MS.map((lbl, i) => {
+          const sel = cur && cur !== 'present' && cur.y === P.vy && cur.m === i + 1;
+          return { lbl, bg: sel ? acc : 'transparent', fg: sel ? '#fff' : '#33302B', fw: sel ? 600 : 400, pick: () => this.pickMonth(i + 1) };
+        }),
+        clear: () => this.spDate(null),
+        present: () => this.spDate('present'),
+        presBg: cur === 'present' ? acc : 'color-mix(in oklab,' + acc + ' 10%,transparent)',
+        presFg: cur === 'present' ? '#fff' : 'var(--acc,#3E5C76)'
+      };
+    }
+    let lp = null;
+    if (P && P.t === 'link') {
+      lp = {
+        x: P.x, y: P.y, url: P.url, text: P.text, err: P.err || false, canRemove: P.canRemove,
+        heading: P.ci != null ? 'Link for ' + ['email', 'phone', 'location'][P.ci] : 'Entry link',
+        onUrl: (e) => this.setState({ pop: { ...this.state.pop, url: e.target.value, err: null } }),
+        onText: (e) => this.setState({ pop: { ...this.state.pop, text: e.target.value } }),
+        save: () => this.saveLink(), remove: () => this.removeLink()
+      };
+    }
+    let cf = null;
+    if (P && P.t === 'confirm') {
+      const s = D.sections[P.si];
+      const n = s.kind === 'entries' ? s.entries.length : 0;
+      cf = {
+        x: P.x, y: P.y,
+        title: 'Delete ' + (s.title.trim() || 'this section') + '?',
+        msg: s.kind === 'entries' ? (n + (n === 1 ? ' entry' : ' entries') + ' and their content will be lost.') : 'Its content will be lost.',
+        confirm: () => { this.mut(d => d.sections.splice(P.si, 1)); this.setState({ pop: null }); }
+      };
+    }
+    const addOpen = !!(P && P.t === 'add');
+    let pickTypes = [], pickStyles = [], pickSel = false, pickIsCustom = false;
+    if (addOpen) {
+      pickSel = !!P.sel;
+      pickIsCustom = P.sel === 'custom';
+      pickTypes = this.CAT.map(c => {
+        const dis = c.key !== 'custom' && D.sections.some(s => s.type === c.key);
+        const sel = P.sel === c.key;
+        return { label: c.label, dis, note: dis ? 'Added' : '',
+          bg: sel ? 'color-mix(in oklab,var(--acc,#3E5C76) 10%,transparent)' : 'transparent',
+          fg: sel ? 'var(--acc,#3E5C76)' : '#33302B', fw: sel ? 600 : 400,
+          pick: () => this.setState({ pop: { ...this.state.pop, sel: c.key } }) };
+      });
+      if (P.sel) {
+        const def = this.CAT.find(c => c.key === P.sel);
+        const ids = def.kind === 'entries' ? this.TSTYLES.entries : (this.TSTYLES[P.sel] || this.TSTYLES.custom);
+        const noTitle = P.sel === 'custom' && !(P.title || '').trim();
+        pickStyles = ids.map(sid => ({
+          name: this.SNAMES[sid], dis: noTitle, sel: false, brd: '#E6E2DA', bgc: '#fff',
+          pick: () => this.addFromPicker(sid),
+          ...this.styleThumbFlags(def.kind === 'entries', sid)
+        }));
+      }
+    }
+    let rp = null;
+    if (P && P.t === 'restyle') {
+      const s = D.sections[P.si];
+      const entriesKind = s.kind === 'entries';
+      const ids = entriesKind ? this.TSTYLES.entries : (this.TSTYLES[s.type] || this.TSTYLES.custom);
+      const curSt = s.style || 'classic';
+      rp = {
+        x: P.x, y: P.y, secTitle: (s.title || '').trim() || 'this section',
+        styles: ids.map(sid => {
+          const sel = sid === curSt;
+          return {
+            name: this.SNAMES[sid], sel,
+            brd: sel ? 'var(--acc,#3E5C76)' : '#E6E2DA',
+            bgc: sel ? 'color-mix(in oklab,var(--acc,#3E5C76) 4%,#fff)' : '#fff',
+            pick: () => { this.mut(d => { d.sections[P.si].style = sid; }); this.setState({ pop: null }); },
+            ...this.styleThumbFlags(entriesKind, sid)
+          };
+        })
+      };
+    }
+    let tp = null;
+    if (P && P.t === 'template') {
+      tp = {
+        x: P.x, y: P.y,
+        items: this.TEMPLATES.map(t => ({
+          id: t.id, name: t.name, font: t.font,
+          dot: t.accent || (this.props.accent ?? '#3E5C76'),
+          sel: t.id === D.templateId,
+          brd: t.id === D.templateId ? 'var(--acc,#3E5C76)' : '#E6E2DA',
+          pick: () => this.setTemplate(t.id)
+        }))
+      };
+    }
+    const tpl = this.getTemplate();
+    const tplAccent = tpl.accent || (this.props.accent ?? '#3E5C76');
+    const hv = tpl.header;
+    const mg = this.state.margins;
+    return {
+      accent: tplAccent, tplFont: tpl.font, tplName: tpl.name,
+      pageRef: this.pageRef, showMargins: this.state.showMargins,
+      pgPadTop: Math.round(mg.top * PX_PER_IN), pgPadRight: Math.round(mg.right * PX_PER_IN), pgPadBottom: Math.round(mg.bottom * PX_PER_IN), pgPadLeft: Math.round(mg.left * PX_PER_IN),
+      mTop: mg.top.toFixed(2), mRight: mg.right.toFixed(2), mBottom: mg.bottom.toFixed(2), mLeft: mg.left.toFixed(2),
+      dragTop: this.startDrag('top'), dragRight: this.startDrag('right'), dragBottom: this.startDrag('bottom'), dragLeft: this.startDrag('left'),
+      toggleMargins: this.toggleMargins, marginsBtnLabel: this.state.showMargins ? 'Done' : 'Margins',
+      marginsBtnBg: this.state.showMargins ? tplAccent : '#fff', marginsBtnFg: this.state.showMargins ? '#fff' : '#3F3B35',
+      exportPDF: this.exportPDF, exportDocx: this.exportDocx,
+      hdrStacked: hv !== 'split', hdrRow: hv === 'split',
+      hdrAlign: hv === 'center' ? 'center' : 'left',
+      hdrContactsJustify: hv === 'center' ? 'center' : 'flex-start',
+      hdrBg: hv === 'banner' ? tplAccent : 'transparent',
+      hdrPad: hv === 'banner' ? '18px 22px 16px' : '0',
+      hdrRadius: hv === 'banner' ? '10px' : '0',
+      hdrGap: hv === 'banner' ? '14px' : '16px',
+      hdrNameColor: hv === 'banner' ? '#ffffff' : '#26231F',
+      hdrTitleColor: hv === 'banner' ? 'rgba(255,255,255,.82)' : '#6B665E',
+      openTemplatePicker: (e) => this.openTemplatePicker(e), tpOpen: !!tp, tp,
+      rpOpen: !!rp, rp,
+      showAllCls: this.props.alwaysShowControls ? 'showall' : '',
+      rootRef: (el) => { this._rootEl = el; },
+      d: D, c0: mkC(0), c1: mkC(1), c2: mkC(2), secs,
+      onEdit: this.onEdit, onFocusF: this.onFocusF, onKeyS: this.onKeyS, onKeyM: this.onKeyM,
+      doPrint: this.doPrint, closePop: this.closePop, popKey: this.popKey,
+      fmtShortSel, fmtLongSel,
+      fsBg: fmtShortSel ? acc : 'transparent', fsFg: fmtShortSel ? '#fff' : '#6B665E', fsFw: fmtShortSel ? 600 : 400,
+      flBg: fmtLongSel ? acc : 'transparent', flFg: fmtLongSel ? '#fff' : '#6B665E', flFw: fmtLongSel ? 600 : 400,
+      setFmtS: () => this.sp('dateFormat', 'MMM'), setFmtL: () => this.sp('dateFormat', 'MMMM'),
+      anyPop: !!P,
+      dpOpen: !!dp, dp, lpOpen: !!lp, lp, cfOpen: !!cf, cf,
+      lpKeySave: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.saveLink(); } },
+      addOpen, pickTypes, pickStyles, pickSel, pickIsCustom,
+      pickNone: addOpen && !pickSel,
+      addTitle: (P && P.title) || '',
+      onAddTitle: (e) => this.setState({ pop: { ...this.state.pop, title: e.target.value } }),
+      addKey: (e) => { if (e.key === 'Escape') { e.stopPropagation(); this.closePop(); } },
+      openAdd: () => this.setState({ pop: { t: 'add', sel: null, title: '' } })
+    };
+  }
+
+}
+</script>
+</body>
+</html>
