@@ -3,11 +3,11 @@
 A Next.js app ported from the Claude Design prototypes in [`design/`](design/). It has three
 screens, each a faithful reimplementation of one design artboard:
 
-| Route        | Screen               | Ported from                            |
-| ------------ | -------------------- | -------------------------------------- |
-| `/`          | Inline resume editor | `Inline Resume Editor.dc.html`         |
-| `/review`    | Resume review panel  | `Resume Review Panel.dc.html`          |
-| `/templates` | Section templates    | `Section Templates.dc.html`            |
+| Route        | Screen               | Ported from                    |
+| ------------ | -------------------- | ------------------------------ |
+| `/`          | Inline resume editor | `Inline Resume Editor.dc.html` |
+| `/review`    | Resume review panel  | `Resume Review Panel.dc.html`  |
+| `/templates` | Section templates    | `Section Templates.dc.html`    |
 
 ## Getting started
 
@@ -17,13 +17,13 @@ cp .env.example .env.local   # then add your Groq key
 npm run dev                  # http://localhost:3000
 ```
 
-| Script              | What it does                                        |
-| ------------------- | --------------------------------------------------- |
-| `npm run dev`       | Dev server                                          |
-| `npm run build`     | Production build                                    |
-| `npm start`         | Serve the production build                          |
-| `npm test`          | Unit tests for the rule engine (`node --test`)      |
-| `npm run typecheck` | `tsc --noEmit`                                      |
+| Script              | What it does                                   |
+| ------------------- | ---------------------------------------------- |
+| `npm run dev`       | Dev server                                     |
+| `npm run build`     | Production build                               |
+| `npm start`         | Serve the production build                     |
+| `npm test`          | Unit tests for the rule engine (`node --test`) |
+| `npm run typecheck` | `tsc --noEmit`                                 |
 
 ## The three screens
 

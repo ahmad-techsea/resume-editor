@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import StoreProvider from './StoreProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Inline Resume Editor',
-  description: 'Inline resume editor, section template gallery, and a 23-category resume review panel.',
+  description:
+    'Inline resume editor, section template gallery, and a 23-category resume review panel.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <StoreProvider>{children}</StoreProvider>
+      </body>
     </html>
   );
 }

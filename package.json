@@ -8,15 +8,20 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "node --test lib/*.test.ts"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.12.0",
     "docx": "8.5.0",
     "groq-sdk": "^1.5.0",
     "jspdf": "^4.2.1",
     "next": "^16.3.1",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-icons": "^5.7.0",
+    "react-redux": "^9.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
@@ -24,6 +29,8 @@
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.6",
     "typescript": "^5.9.0"
   }
 }

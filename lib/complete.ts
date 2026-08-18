@@ -13,8 +13,5 @@ export async function complete(prompt: string): Promise<string> {
   if (!res.ok) {
     throw new Error(payload?.error || `Completion request failed (${res.status})`);
   }
-  if (typeof payload?.text !== 'string') {
-    throw new Error('Completion response was malformed.');
-  }
   return payload.text;
 }

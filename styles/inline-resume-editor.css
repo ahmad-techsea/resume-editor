@@ -3,55 +3,216 @@
    so it can't reach the other two artboards. The prototype's body rule lives in
    app/globals.css; the antialiasing and print-color-adjust it also set are applied
    to .ire below and inherit to everything inside. */
-.ire { -webkit-font-smoothing: antialiased; print-color-adjust: exact; }
-.ire a { color: var(--acc, #3E5C76); text-decoration: none; }
-.ire a:hover { color: var(--acc, #3E5C76); text-decoration: underline; }
-.ire input, .ire textarea { font: inherit; color: inherit; border: 0; background: transparent; padding: 1px 2px; margin: -1px -2px; field-sizing: content; letter-spacing: inherit; text-align: inherit; }
-.ire textarea { resize: none; display: block; overflow: hidden; }
-.ire button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-.ire button:disabled { opacity: .35; cursor: default; }
-.ire input::placeholder, .ire textarea::placeholder { color: #A9A29A; opacity: 1; }
-.ire input:hover:not(:focus), .ire textarea:hover:not(:focus) { background: color-mix(in oklab, var(--acc, #3E5C76) 5%, transparent); border-radius: 3px; }
-.ire input:focus, .ire textarea:focus { outline: none; border-radius: 3px; background: color-mix(in oklab, var(--acc, #3E5C76) 7%, transparent); box-shadow: 0 1.5px 0 var(--acc, #3E5C76); }
-.ire button:focus-visible, .ire a:focus-visible { outline: 2px solid var(--acc, #3E5C76); outline-offset: 2px; border-radius: 4px; }
+.ire {
+  -webkit-font-smoothing: antialiased;
+  print-color-adjust: exact;
+}
+.ire a {
+  color: var(--acc, #3e5c76);
+  text-decoration: none;
+}
+.ire a:hover {
+  color: var(--acc, #3e5c76);
+  text-decoration: underline;
+}
+.ire input,
+.ire textarea {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  padding: 1px 2px;
+  margin: -1px -2px;
+  field-sizing: content;
+  letter-spacing: inherit;
+  text-align: inherit;
+}
+.ire textarea {
+  resize: none;
+  display: block;
+  overflow: hidden;
+}
+.ire button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.ire button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.ire input::placeholder,
+.ire textarea::placeholder {
+  color: #a9a29a;
+  opacity: 1;
+}
+.ire input:hover:not(:focus),
+.ire textarea:hover:not(:focus) {
+  background: color-mix(in oklab, var(--acc, #3e5c76) 5%, transparent);
+  border-radius: 3px;
+}
+.ire input:focus,
+.ire textarea:focus {
+  outline: none;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--acc, #3e5c76) 7%, transparent);
+  box-shadow: 0 1.5px 0 var(--acc, #3e5c76);
+}
+.ire button:focus-visible,
+.ire a:focus-visible {
+  outline: 2px solid var(--acc, #3e5c76);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
-.ire .sctls, .ire .ectls, .ire .adde, .ire .adds, .ire .lctl, .ire .cbdel { opacity: 0; pointer-events: none; transition: opacity .15s ease .12s; }
-.ire .sec:hover > .sctls, .ire .sec:focus-within > .sctls,
-.ire .ent:hover > .ectls, .ire .ent:focus-within > .ectls,
-.ire .sec:hover .adde, .ire .sec:focus-within .adde,
-.ire:hover .adds, .ire:focus-within .adds,
-.ire .citem:hover .lctl, .ire .citem:focus-within .lctl { opacity: 1; pointer-events: auto; transition-delay: 0s; }
-.ire .cbrow:hover .cbdel, .ire .cbrow:focus-within .cbdel { opacity: 1; pointer-events: auto; transition-delay: 0s; }
-.ire.showall .sctls, .ire.showall .ectls, .ire.showall .adde, .ire.showall .adds, .ire.showall .lctl, .ire.showall .cbdel { opacity: 1; pointer-events: auto; }
-.ire .pop { animation: pin .13s ease; }
-@keyframes pin { from { opacity: 0; transform: translateY(4px); } }
+.ire .sctls,
+.ire .ectls,
+.ire .adde,
+.ire .adds,
+.ire .lctl,
+.ire .cbdel {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease 0.12s;
+}
+.ire .sec:hover > .sctls,
+.ire .sec:focus-within > .sctls,
+.ire .ent:hover > .ectls,
+.ire .ent:focus-within > .ectls,
+.ire .sec:hover .adde,
+.ire .sec:focus-within .adde,
+.ire:hover .adds,
+.ire:focus-within .adds,
+.ire .citem:hover .lctl,
+.ire .citem:focus-within .lctl {
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.ire .cbrow:hover .cbdel,
+.ire .cbrow:focus-within .cbdel {
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.ire.showall .sctls,
+.ire.showall .ectls,
+.ire.showall .adde,
+.ire.showall .adds,
+.ire.showall .lctl,
+.ire.showall .cbdel {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ire .pop {
+  animation: pin 0.13s ease;
+}
+@keyframes pin {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
 
 @media print {
-  .ire .no-print, .ire .sctls, .ire .ectls, .ire .adde, .ire .adds, .ire .lctl, .ire .cbdel { display: none !important; }
-  body:has(.ire) { background: #fff; }
-  .ire .pg { box-shadow: none !important; margin: 0 !important; width: auto !important; padding: 0 !important; }
-  .ire input::placeholder, .ire textarea::placeholder { color: transparent; }
-  .ire input:focus, .ire textarea:focus, .ire input:hover, .ire textarea:hover { background: none; box-shadow: none; }
+  .ire .no-print,
+  .ire .sctls,
+  .ire .ectls,
+  .ire .adde,
+  .ire .adds,
+  .ire .lctl,
+  .ire .cbdel {
+    display: none !important;
+  }
+  body:has(.ire) {
+    background: #fff;
+  }
+  .ire .pg {
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: auto !important;
+    padding: 0 !important;
+  }
+  .ire input::placeholder,
+  .ire textarea::placeholder {
+    color: transparent;
+  }
+  .ire input:focus,
+  .ire textarea:focus,
+  .ire input:hover,
+  .ire textarea:hover {
+    background: none;
+    box-shadow: none;
+  }
 }
 
 /* The design runtime compiled each `style-hover="…"` / `style-focus="…"` attribute into a
    generated class whose rule was marked !important so it could beat the element's inline
    style. These are those rules, one class per distinct declaration. */
-.ire .hv-soft:hover { background: #F6F4EF !important; }
-.ire .hv-ctl:hover { background: #EFECE6 !important; color: #3F3B35 !important; }
-.ire .hv-ctl-del:hover { background: #F8EEEC !important; color: #B04A42 !important; }
-.ire .hv-link:hover { background: #F0EDE7 !important; color: #3F3B35 !important; }
-.ire .hv-add-contrib:hover { color: var(--acc, #3E5C76) !important; background: color-mix(in oklab, var(--acc, #3E5C76) 6%, transparent) !important; }
-.ire .hv-add-entry:hover { background: color-mix(in oklab, var(--acc, #3E5C76) 7%, transparent) !important; }
-.ire .hv-add-section:hover { border-color: var(--acc, #3E5C76) !important; color: var(--acc, #3E5C76) !important; background: color-mix(in oklab, var(--acc, #3E5C76) 4%, transparent) !important; }
-.ire .hv-list-item:hover { background: #F3F1EB !important; }
-.ire .hv-style-card:hover { border-color: var(--acc, #3E5C76) !important; background: color-mix(in oklab, var(--acc, #3E5C76) 3%, #fff) !important; }
-.ire .hv-style-card-plain:hover { border-color: var(--acc, #3E5C76) !important; }
-.ire .hv-month:hover { box-shadow: inset 0 0 0 1px var(--acc, #3E5C76) !important; }
-.ire .hv-muted:hover { background: #F3F1EB !important; color: #54504A !important; }
-.ire .hv-b105:hover { filter: brightness(1.05) !important; }
-.ire .hv-b108:hover { filter: brightness(1.08) !important; }
-.ire .hv-remove:hover { background: #F8EEEC !important; }
-.ire .hv-plain:hover { background: #F3F1EB !important; }
-.ire .hv-confirm-del:hover { background: #9A3F38 !important; }
-.ire .fc-field:focus { border-color: var(--acc, #3E5C76) !important; background: #fff !important; box-shadow: 0 0 0 3px color-mix(in oklab, var(--acc, #3E5C76) 12%, transparent) !important; }
+.ire .hv-soft:hover {
+  background: #f6f4ef !important;
+}
+.ire .hv-ctl:hover {
+  background: #efece6 !important;
+  color: #3f3b35 !important;
+}
+.ire .hv-ctl-del:hover {
+  background: #f8eeec !important;
+  color: #b04a42 !important;
+}
+.ire .hv-link:hover {
+  background: #f0ede7 !important;
+  color: #3f3b35 !important;
+}
+.ire .hv-add-contrib:hover {
+  color: var(--acc, #3e5c76) !important;
+  background: color-mix(in oklab, var(--acc, #3e5c76) 6%, transparent) !important;
+}
+.ire .hv-add-entry:hover {
+  background: color-mix(in oklab, var(--acc, #3e5c76) 7%, transparent) !important;
+}
+.ire .hv-add-section:hover {
+  border-color: var(--acc, #3e5c76) !important;
+  color: var(--acc, #3e5c76) !important;
+  background: color-mix(in oklab, var(--acc, #3e5c76) 4%, transparent) !important;
+}
+.ire .hv-list-item:hover {
+  background: #f3f1eb !important;
+}
+.ire .hv-style-card:hover {
+  border-color: var(--acc, #3e5c76) !important;
+  background: color-mix(in oklab, var(--acc, #3e5c76) 3%, #fff) !important;
+}
+.ire .hv-style-card-plain:hover {
+  border-color: var(--acc, #3e5c76) !important;
+}
+.ire .hv-month:hover {
+  box-shadow: inset 0 0 0 1px var(--acc, #3e5c76) !important;
+}
+.ire .hv-muted:hover {
+  background: #f3f1eb !important;
+  color: #54504a !important;
+}
+.ire .hv-b105:hover {
+  filter: brightness(1.05) !important;
+}
+.ire .hv-b108:hover {
+  filter: brightness(1.08) !important;
+}
+.ire .hv-remove:hover {
+  background: #f8eeec !important;
+}
+.ire .hv-plain:hover {
+  background: #f3f1eb !important;
+}
+.ire .hv-confirm-del:hover {
+  background: #9a3f38 !important;
+}
+.ire .fc-field:focus {
+  border-color: var(--acc, #3e5c76) !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--acc, #3e5c76) 12%, transparent) !important;
+}
