@@ -4,7 +4,6 @@ import React from 'react';
 import { connect, type ConnectedProps } from 'react-redux';
 import '@/styles/inline-resume-editor.css';
 import {
-  PX_PER_IN,
   MS,
   ML,
   PHE,
@@ -16,7 +15,10 @@ import {
   getTemplate,
   buildBlankEditorResume,
   buildSampleEditorResume,
+  sectionHasContent,
 } from '@/lib/resume-data/editor-resume-data';
+import { CSS_DPI, DEFAULT_MARGIN_IN, type PageSizeId } from '@/lib/resume-pagination/page-constants';
+import { getOrCreateResumeId, loadPageSize, savePageSize } from '@/lib/resume-data/resume-persistence';
 import { buildExportModel, exportAccent } from '@/lib/resume-export/build-model';
 import { exportResumeToPDF } from '@/lib/resume-export/pdf';
 import { exportResumeToDocx } from '@/lib/resume-export/docx';
@@ -28,9 +30,12 @@ import {
 import type { RootState, AppDispatch } from '@/lib/store';
 import { usesCatalog, catalogFor } from '@/components/sections/catalog';
 import ContactChip from './editor/ContactChip';
-import SectionBlock from './editor/SectionBlock';
-import Toolbar from './editor/Toolbar';
+import buildSectionBlocks from './editor/SectionBlock';
+import SettingsDrawer from './editor/SettingsDrawer';
+import ReviewDrawer from './editor/ReviewDrawer';
 import MarginsOverlay from './editor/MarginsOverlay';
+import PaginatedResumeView from './editor/pagination/PaginatedResumeView';
+import { atomicBlock, type PgBlockSpec } from './editor/pagination/block-spec';
 import AddSectionPopover from './editor/popovers/AddSectionPopover';
 import DatePickerPopover from './editor/popovers/DatePickerPopover';
 import LinkPopover from './editor/popovers/LinkPopover';
@@ -45,6 +50,18 @@ export interface InlineResumeEditorProps {
   sampleData?: boolean;
   /** Pin the hover-revealed editing controls open. */
   alwaysShowControls?: boolean;
+  /** Margins aren't part of the persisted document (no UI to save them yet) — the headless export
+   *  route seeds this from the live editor's current margins so a customized margin still
+   *  produces byte-identical pagination in the exported PDF. Defaults to DEFAULT_MARGIN_IN. */
+  initialMargins?: { top: number; right: number; bottom: number; left: number };
+  /** The headless export route (app/export/pdf-print/PdfPrintClient.tsx) and the landing page
+   *  (components/LandingPage.tsx, for both Upload and Scratch) both seed the store with the real
+   *  document *before* this component mounts. The default componentDidMount fetch is asynchronous
+   *  even though its stub API resolves on a bare microtask, so — mounted after the seed — it would
+   *  still resolve after and silently overwrite the seeded document with a fresh blank/sample one.
+   *  This skips that fetch entirely for such pre-seeded contexts; app/editor/page.tsx always sets
+   *  it, since the landing page is the only entry point into the editor now. */
+  skipInitialFetch?: boolean;
 }
 
 type Pop = any;
@@ -54,9 +71,15 @@ interface EditorState {
   editBody: string | null;
   margins: { top: number; right: number; bottom: number; left: number };
   showMargins: boolean;
+  zoom: number;
+  settingsOpen: boolean;
+  reviewOpen: boolean;
 }
 
-const mapStateToProps = (state: RootState) => ({ data: state.editorResume.data });
+const mapStateToProps = (state: RootState) => ({
+  data: state.editorResume.data,
+  resumeId: state.editorResume.resumeId,
+});
 const mapDispatchToProps = (dispatch: AppDispatch) => ({
   setPath: (path: string, value: any) => dispatch(editorResumeActions.setPath({ path, value })),
   addSection: (section: { type: string; kind: 'text' | 'entries'; style: string; title: string }) =>
@@ -71,9 +94,11 @@ const mapDispatchToProps = (dispatch: AppDispatch) => ({
   saveLink: (target: LinkTarget, url: string, text: string) =>
     dispatch(editorResumeActions.saveLink({ target, url, text })),
   removeLink: (target: LinkTarget) => dispatch(editorResumeActions.removeLink({ target })),
-  resetData: (data: any, nextId: number) =>
-    dispatch(editorResumeActions.resetData({ data, nextId })),
+  resetData: (data: any, nextId: number, resumeId?: string) =>
+    dispatch(editorResumeActions.resetData({ data, nextId, resumeId })),
   fetchEditorResume: (sampleOn: boolean) => dispatch(fetchEditorResume(sampleOn)),
+  hydrateResumeMeta: (resumeId: string, pageSize: PageSizeId) =>
+    dispatch(editorResumeActions.hydrateResumeMeta({ resumeId, pageSize })),
 });
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type PropsFromRedux = ConnectedProps<typeof connector>;
@@ -91,22 +116,39 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
     this.state = {
       pop: null,
       editBody: null,
-      margins: { top: 0.75, right: 0.75, bottom: 0.75, left: 0.75 },
+      margins: props.initialMargins ?? {
+        top: DEFAULT_MARGIN_IN,
+        right: DEFAULT_MARGIN_IN,
+        bottom: DEFAULT_MARGIN_IN,
+        left: DEFAULT_MARGIN_IN,
+      },
       showMargins: false,
+      zoom: 1,
+      settingsOpen: false,
+      reviewOpen: false,
     };
   }
+  toggleSettings = () => this.setState((s) => ({ settingsOpen: !s.settingsOpen }));
+  toggleReview = () => this.setState((s) => ({ reviewOpen: !s.reviewOpen }));
   get sampleOn() {
     return this.props.sampleData !== false;
   }
   componentDidMount() {
-    this.props.fetchEditorResume(this.sampleOn);
+    // Always hydrate page-size/resume-identity — narrow and header/sections-safe, so it can never
+    // clobber content the landing page or the export route just seeded (unlike fetchEditorResume,
+    // which replaces the whole document and is correctly skipped in those cases below).
+    const resumeId = getOrCreateResumeId();
+    this.props.hydrateResumeMeta(resumeId, loadPageSize(resumeId));
+    if (!this.props.skipInitialFetch) this.props.fetchEditorResume(this.sampleOn);
   }
   componentDidUpdate(pp: Props) {
     if ((pp.sampleData !== false) !== this.sampleOn) {
       let counter = 100;
       const mintId = () => 'x' + ++counter;
       const data = this.sampleOn ? buildSampleEditorResume(mintId) : buildBlankEditorResume(mintId);
-      this.props.resetData(data, counter + 1);
+      const resumeId = getOrCreateResumeId();
+      data.pageSize = loadPageSize(resumeId);
+      this.props.resetData(data, counter + 1, resumeId);
       this.setState({ pop: null });
     }
   }
@@ -153,7 +195,12 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
   };
   onKeyM = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => this.esc(e);
   doPrint = () => window.print();
+  setPageSize = (id: PageSizeId) => {
+    this.props.setPath('pageSize', id);
+    savePageSize(this.props.resumeId || getOrCreateResumeId(), id);
+  };
   toggleMargins = () => this.setState((s) => ({ showMargins: !s.showMargins }));
+  setZoom = (zoom: number) => this.setState({ zoom });
   rootRef = (el: HTMLDivElement | null) => {
     this._rootEl = el;
   };
@@ -171,10 +218,10 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
     if (!this._dragDir) return;
     const r = this._dragRect!;
     let val: number;
-    if (this._dragDir === 'top') val = (e.clientY - r.top) / PX_PER_IN;
-    else if (this._dragDir === 'bottom') val = (r.bottom - e.clientY) / PX_PER_IN;
-    else if (this._dragDir === 'left') val = (e.clientX - r.left) / PX_PER_IN;
-    else val = (r.right - e.clientX) / PX_PER_IN;
+    if (this._dragDir === 'top') val = (e.clientY - r.top) / CSS_DPI;
+    else if (this._dragDir === 'bottom') val = (r.bottom - e.clientY) / CSS_DPI;
+    else if (this._dragDir === 'left') val = (e.clientX - r.left) / CSS_DPI;
+    else val = (r.right - e.clientX) / CSS_DPI;
     val = Math.max(0.25, Math.min(2, Math.round(val * 20) / 20));
     const dir = this._dragDir;
     this.setState((s) => ({ margins: { ...s.margins, [dir]: val } }));
@@ -188,14 +235,13 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
   exportPDF = async () => {
     const tpl = getTemplate(this.props.data.templateId);
     const accent = exportAccent(tpl.id, tpl.accent, this.props.accent);
-    const model = buildExportModel(this.props.data);
-    await exportResumeToPDF(model, tpl.font, this.state.margins, accent);
+    await exportResumeToPDF(this.props.data, this.state.margins, accent);
   };
   exportDocx = async () => {
     const tpl = getTemplate(this.props.data.templateId);
     const accent = exportAccent(tpl.id, tpl.accent, this.props.accent);
     const model = buildExportModel(this.props.data);
-    await exportResumeToDocx(model, tpl.font, this.state.margins, accent);
+    await exportResumeToDocx(model, tpl.font, this.state.margins, accent, this.props.data.pageSize);
   };
 
   closePop = () => this.setState({ pop: null });
@@ -210,20 +256,9 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
     if (j < 0 || j >= this.props.data.sections.length) return;
     this.props.moveAtPath('sections', si, j);
   }
-  hasContent(s: any) {
-    if (s.kind === 'text') return !!(s.body && s.body.trim());
-    return s.entries.some(
-      (en: any) =>
-        [en.title, en.subtitle, en.desc].some((x: string) => x && x.trim()) ||
-        en.start ||
-        en.end ||
-        en.link ||
-        (en.contribs || []).some((x: string) => x && x.trim()),
-    );
-  }
   reqDelSec(e: React.MouseEvent, si: number) {
     const s = this.props.data.sections[si];
-    if (this.hasContent(s)) {
+    if (sectionHasContent(s)) {
       const { x, y } = this.anchor(e, 272, false);
       this.setState({ pop: { t: 'confirm', si, x, y } });
     } else this.props.removeAtPath('sections', si);
@@ -458,6 +493,9 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
         v.addEntry = () => this.props.addEntry(si);
         v.entries = s.entries.map((en: any, ei: number) => ({
           id: en.id,
+          // Pagination block key for this entry as a whole — stable across content edits since
+          // entries are only ever pushed/removed by index, never reordered.
+          pathPrefix: 'sections.' + si + '.entries.' + ei,
           title: en.title,
           subtitle: en.subtitle,
           desc: en.desc,
@@ -692,10 +730,10 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
       tplFont: tpl.font,
       tplName: tpl.name,
       showMargins: this.state.showMargins,
-      pgPadTop: Math.round(mg.top * PX_PER_IN),
-      pgPadRight: Math.round(mg.right * PX_PER_IN),
-      pgPadBottom: Math.round(mg.bottom * PX_PER_IN),
-      pgPadLeft: Math.round(mg.left * PX_PER_IN),
+      pgPadTop: mg.top * CSS_DPI,
+      pgPadRight: mg.right * CSS_DPI,
+      pgPadBottom: mg.bottom * CSS_DPI,
+      pgPadLeft: mg.left * CSS_DPI,
       mTop: mg.top.toFixed(2),
       mRight: mg.right.toFixed(2),
       mBottom: mg.bottom.toFixed(2),
@@ -710,6 +748,10 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
       marginsBtnFg: this.state.showMargins ? '#fff' : '#3F3B35',
       exportPDF: this.exportPDF,
       exportDocx: this.exportDocx,
+      pageSize: D.pageSize,
+      setPageSize: this.setPageSize,
+      zoom: this.state.zoom,
+      setZoom: this.setZoom,
       hdrStacked: hv !== 'split',
       hdrRow: hv === 'split',
       hdrAlign: hv === 'center' ? 'center' : 'left',
@@ -776,8 +818,164 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
     };
   }
 
+  /** Flattens the resume into the ordered pagination block list: header, contacts, then each
+   *  section's blocks in turn. This is the single place content becomes "blocks" — sections can
+   *  no longer own a wrapping DOM node once their pieces may land on different pages (see
+   *  SectionBlock.tsx), so their builder returns flat siblings that get concatenated here. */
+  buildBlocks(v: any): PgBlockSpec[] {
+    const header = (
+      <div
+        style={{
+          background: v.hdrBg,
+          padding: v.hdrPad,
+          borderRadius: v.hdrRadius,
+          marginBottom: v.hdrGap,
+        }}
+      >
+        {v.hdrStacked && (
+          <>
+            <input
+              data-path="header.name"
+              value={v.d.header.name}
+              onChange={this.onEdit}
+              onFocus={this.onFocusF}
+              onKeyDown={this.onKeyS}
+              placeholder="Your name"
+              aria-label="Name"
+              style={{
+                display: 'block',
+                width: '100%',
+                fontSize: '33px',
+                fontWeight: '700',
+                letterSpacing: '-.015em',
+                color: v.hdrNameColor,
+                lineHeight: '1.15',
+                textAlign: v.hdrAlign,
+              }}
+            />
+            <input
+              data-path="header.title"
+              value={v.d.header.title}
+              onChange={this.onEdit}
+              onFocus={this.onFocusF}
+              onKeyDown={this.onKeyS}
+              placeholder="Professional title"
+              aria-label="Professional title"
+              style={{
+                display: 'block',
+                width: '100%',
+                fontSize: '15px',
+                color: v.hdrTitleColor,
+                marginTop: '5px',
+                textAlign: v.hdrAlign,
+              }}
+            />
+          </>
+        )}
+        {v.hdrRow && (
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              gap: '14px',
+            }}
+          >
+            <input
+              data-path="header.name"
+              value={v.d.header.name}
+              onChange={this.onEdit}
+              onFocus={this.onFocusF}
+              onKeyDown={this.onKeyS}
+              placeholder="Your name"
+              aria-label="Name"
+              style={{
+                flex: '1',
+                minWidth: '0',
+                fontSize: '29px',
+                fontWeight: '700',
+                letterSpacing: '-.015em',
+                color: v.hdrNameColor,
+              }}
+            />
+            <input
+              data-path="header.title"
+              value={v.d.header.title}
+              onChange={this.onEdit}
+              onFocus={this.onFocusF}
+              onKeyDown={this.onKeyS}
+              placeholder="Professional title"
+              aria-label="Professional title"
+              style={{
+                flex: 'none',
+                textAlign: 'right',
+                fontSize: '14px',
+                color: v.hdrTitleColor,
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+
+    const contacts = (
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: v.hdrContactsJustify,
+          columnGap: '9px',
+          rowGap: '4px',
+          fontSize: '13px',
+          color: '#4C4841',
+        }}
+      >
+        <ContactChip
+          c={v.c0}
+          placeholder="Email"
+          label="Email"
+          onEdit={this.onEdit}
+          onFocusF={this.onFocusF}
+          onKeyS={this.onKeyS}
+        />
+        <span style={{ color: '#C9C4BB' }}>·</span>
+        <ContactChip
+          c={v.c1}
+          placeholder="Phone"
+          label="Phone"
+          onEdit={this.onEdit}
+          onFocusF={this.onFocusF}
+          onKeyS={this.onKeyS}
+        />
+        <span style={{ color: '#C9C4BB' }}>·</span>
+        <ContactChip
+          c={v.c2}
+          placeholder="City, State"
+          label="Location"
+          onEdit={this.onEdit}
+          onFocusF={this.onFocusF}
+          onKeyS={this.onKeyS}
+        />
+      </div>
+    );
+
+    const sectionBlocks = v.secs.flatMap((s: any) =>
+      buildSectionBlocks({
+        s,
+        onEdit: this.onEdit,
+        onFocusF: this.onFocusF,
+        onKeyS: this.onKeyS,
+        onKeyM: this.onKeyM,
+      }),
+    );
+
+    return [atomicBlock('header', header), atomicBlock('header.contacts', contacts), ...sectionBlocks];
+  }
+
   render() {
     const v = this.renderVals();
+    const blocks = this.buildBlocks(v);
     return (
       <div
         className={`ire rzr ${v.showAllCls}`}
@@ -789,234 +987,98 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
           ['--acc' as string]: v.accent,
         }}
       >
-        <Toolbar
-          tplName={v.tplName}
-          openTemplatePicker={v.openTemplatePicker}
-          fmtShortSel={v.fmtShortSel}
-          fmtLongSel={v.fmtLongSel}
-          fsBg={v.fsBg}
-          fsFg={v.fsFg}
-          fsFw={v.fsFw}
-          flBg={v.flBg}
-          flFg={v.flFg}
-          flFw={v.flFw}
-          setFmtS={v.setFmtS}
-          setFmtL={v.setFmtL}
-          marginsBtnLabel={v.marginsBtnLabel}
-          marginsBtnBg={v.marginsBtnBg}
-          marginsBtnFg={v.marginsBtnFg}
-          toggleMargins={v.toggleMargins}
-          exportPDF={v.exportPDF}
-          exportDocx={v.exportDocx}
-          doPrint={v.doPrint}
+        <SettingsDrawer
+          open={this.state.settingsOpen}
+          onToggle={this.toggleSettings}
+          toolbar={{
+            tplName: v.tplName,
+            openTemplatePicker: v.openTemplatePicker,
+            pageSize: v.pageSize,
+            setPageSize: v.setPageSize,
+            zoom: v.zoom,
+            setZoom: v.setZoom,
+            fmtShortSel: v.fmtShortSel,
+            fmtLongSel: v.fmtLongSel,
+            fsBg: v.fsBg,
+            fsFg: v.fsFg,
+            fsFw: v.fsFw,
+            flBg: v.flBg,
+            flFg: v.flFg,
+            flFw: v.flFw,
+            setFmtS: v.setFmtS,
+            setFmtL: v.setFmtL,
+            marginsBtnLabel: v.marginsBtnLabel,
+            marginsBtnBg: v.marginsBtnBg,
+            marginsBtnFg: v.marginsBtnFg,
+            toggleMargins: v.toggleMargins,
+            exportPDF: v.exportPDF,
+            exportDocx: v.exportDocx,
+            doPrint: v.doPrint,
+          }}
+        />
+        <ReviewDrawer open={this.state.reviewOpen} onToggle={this.toggleReview} />
+
+        <PaginatedResumeView
+          blocks={blocks}
+          pageSize={v.pageSize}
+          margins={this.state.margins}
+          zoom={v.zoom}
+          fontFamily={v.tplFont}
+          firstPageFrameRef={this.pageRef}
+          pageOverlay={
+            v.showMargins ? (
+              <MarginsOverlay
+                pgPadTop={v.pgPadTop}
+                pgPadBottom={v.pgPadBottom}
+                pgPadLeft={v.pgPadLeft}
+                pgPadRight={v.pgPadRight}
+                mTop={v.mTop}
+                mBottom={v.mBottom}
+                mLeft={v.mLeft}
+                mRight={v.mRight}
+                dragTop={v.dragTop}
+                dragBottom={v.dragBottom}
+                dragLeft={v.dragLeft}
+                dragRight={v.dragRight}
+              />
+            ) : null
+          }
         />
 
+        {/* Editor chrome, not resume content — deliberately rendered below the whole page stack
+            rather than inside any one page, so pagination never tries to fit it onto a page. */}
         <div
-          className="pg"
-          ref={this.pageRef}
-          style={{
-            width: '794px',
-            maxWidth: '100%',
-            boxSizing: 'border-box',
-            margin: '14px auto 0',
-            background: '#fff',
-            boxShadow: '0 1px 2px rgba(30,27,22,.05),0 16px 40px -18px rgba(30,27,22,.22)',
-            padding: `${v.pgPadTop}px ${v.pgPadRight}px ${v.pgPadBottom}px ${v.pgPadLeft}px`,
-            position: 'relative',
-            fontFamily: v.tplFont,
-          }}
+          className="no-print"
+          style={{ position: 'relative', width: '794px', maxWidth: '100%', margin: '18px auto 0' }}
         >
-          {v.showMargins && (
-            <MarginsOverlay
-              pgPadTop={v.pgPadTop}
-              pgPadBottom={v.pgPadBottom}
-              pgPadLeft={v.pgPadLeft}
-              pgPadRight={v.pgPadRight}
-              mTop={v.mTop}
-              mBottom={v.mBottom}
-              mLeft={v.mLeft}
-              mRight={v.mRight}
-              dragTop={v.dragTop}
-              dragBottom={v.dragBottom}
-              dragLeft={v.dragLeft}
-              dragRight={v.dragRight}
+          <button
+            className="adds hv-add-section"
+            onClick={v.openAdd}
+            style={{
+              width: '100%',
+              padding: '9px',
+              border: '1px dashed #D5D0C6',
+              borderRadius: '8px',
+              color: '#8A857C',
+              fontSize: '12.5px',
+              fontWeight: '600',
+              background: 'none',
+            }}
+          >
+            + Add section
+          </button>
+          {v.addOpen && (
+            <AddSectionPopover
+              addKey={v.addKey}
+              pickTypes={v.pickTypes}
+              pickNone={v.pickNone}
+              pickIsCustom={v.pickIsCustom}
+              addTitle={v.addTitle}
+              onAddTitle={v.onAddTitle}
+              pickSel={v.pickSel}
+              pickStyles={v.pickStyles}
             />
           )}
-
-          <div
-            style={{
-              background: v.hdrBg,
-              padding: v.hdrPad,
-              borderRadius: v.hdrRadius,
-              marginBottom: v.hdrGap,
-            }}
-          >
-            {v.hdrStacked && (
-              <>
-                <input
-                  data-path="header.name"
-                  value={v.d.header.name}
-                  onChange={this.onEdit}
-                  onFocus={this.onFocusF}
-                  onKeyDown={this.onKeyS}
-                  placeholder="Your name"
-                  aria-label="Name"
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    fontSize: '33px',
-                    fontWeight: '700',
-                    letterSpacing: '-.015em',
-                    color: v.hdrNameColor,
-                    lineHeight: '1.15',
-                    textAlign: v.hdrAlign,
-                  }}
-                />
-                <input
-                  data-path="header.title"
-                  value={v.d.header.title}
-                  onChange={this.onEdit}
-                  onFocus={this.onFocusF}
-                  onKeyDown={this.onKeyS}
-                  placeholder="Professional title"
-                  aria-label="Professional title"
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    fontSize: '15px',
-                    color: v.hdrTitleColor,
-                    marginTop: '5px',
-                    textAlign: v.hdrAlign,
-                  }}
-                />
-              </>
-            )}
-            {v.hdrRow && (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'baseline',
-                  gap: '14px',
-                }}
-              >
-                <input
-                  data-path="header.name"
-                  value={v.d.header.name}
-                  onChange={this.onEdit}
-                  onFocus={this.onFocusF}
-                  onKeyDown={this.onKeyS}
-                  placeholder="Your name"
-                  aria-label="Name"
-                  style={{
-                    flex: '1',
-                    minWidth: '0',
-                    fontSize: '29px',
-                    fontWeight: '700',
-                    letterSpacing: '-.015em',
-                    color: v.hdrNameColor,
-                  }}
-                />
-                <input
-                  data-path="header.title"
-                  value={v.d.header.title}
-                  onChange={this.onEdit}
-                  onFocus={this.onFocusF}
-                  onKeyDown={this.onKeyS}
-                  placeholder="Professional title"
-                  aria-label="Professional title"
-                  style={{
-                    flex: 'none',
-                    textAlign: 'right',
-                    fontSize: '14px',
-                    color: v.hdrTitleColor,
-                  }}
-                />
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              justifyContent: v.hdrContactsJustify,
-              columnGap: '9px',
-              rowGap: '4px',
-              fontSize: '13px',
-              color: '#4C4841',
-            }}
-          >
-            <ContactChip
-              c={v.c0}
-              placeholder="Email"
-              label="Email"
-              onEdit={this.onEdit}
-              onFocusF={this.onFocusF}
-              onKeyS={this.onKeyS}
-            />
-            <span style={{ color: '#C9C4BB' }}>·</span>
-            <ContactChip
-              c={v.c1}
-              placeholder="Phone"
-              label="Phone"
-              onEdit={this.onEdit}
-              onFocusF={this.onFocusF}
-              onKeyS={this.onKeyS}
-            />
-            <span style={{ color: '#C9C4BB' }}>·</span>
-            <ContactChip
-              c={v.c2}
-              placeholder="City, State"
-              label="Location"
-              onEdit={this.onEdit}
-              onFocusF={this.onFocusF}
-              onKeyS={this.onKeyS}
-            />
-          </div>
-
-          {v.secs.map((s: any) => (
-            <SectionBlock
-              key={s.id}
-              s={s}
-              onEdit={this.onEdit}
-              onFocusF={this.onFocusF}
-              onKeyS={this.onKeyS}
-              onKeyM={this.onKeyM}
-            />
-          ))}
-
-          <div style={{ position: 'relative', marginTop: '34px' }}>
-            <button
-              className="adds hv-add-section"
-              onClick={v.openAdd}
-              style={{
-                width: '100%',
-                padding: '9px',
-                border: '1px dashed #D5D0C6',
-                borderRadius: '8px',
-                color: '#8A857C',
-                fontSize: '12.5px',
-                fontWeight: '600',
-                background: 'none',
-              }}
-            >
-              + Add section
-            </button>
-            {v.addOpen && (
-              <AddSectionPopover
-                addKey={v.addKey}
-                pickTypes={v.pickTypes}
-                pickNone={v.pickNone}
-                pickIsCustom={v.pickIsCustom}
-                addTitle={v.addTitle}
-                onAddTitle={v.onAddTitle}
-                pickSel={v.pickSel}
-                pickStyles={v.pickStyles}
-              />
-            )}
-          </div>
         </div>
 
         <div

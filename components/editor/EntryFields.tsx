@@ -3,6 +3,7 @@ import { FiX } from 'react-icons/fi';
 import { LINK_ICON, TRASH_ICON } from './icons';
 import DateRangeButtons from './DateRangeButtons';
 import type { ResumeFieldColorMap } from './SectionBlock';
+import { atomicBlock, type PgBlockSpec } from './pagination/block-spec';
 
 export interface EntryFieldsProps {
   s: any;
@@ -15,7 +16,12 @@ export interface EntryFieldsProps {
   fieldRef?: (el: HTMLInputElement | HTMLTextAreaElement | null) => void;
 }
 
-export default function EntryFields({
+/** Builds the pagination block for one entry. The whole entry (head + description + bullets) is
+ *  one atomic unit — it moves to the next page as a whole rather than splitting internally (a
+ *  section still breaks *between* entries; see the plan's scoping note on entry-level vs.
+ *  sub-entry granularity). Returns a plain block descriptor, not a mounted component — the
+ *  pagination engine (PaginatedResumeView) decides which page's container actually renders it. */
+export default function buildEntryFieldsBlock({
   s,
   ent,
   onEdit,
@@ -24,7 +30,7 @@ export default function EntryFields({
   onKeyM,
   colorMap,
   fieldRef,
-}: EntryFieldsProps) {
+}: EntryFieldsProps): PgBlockSpec {
   const linkable = s.entLinkable !== false;
   const hasDates = ent.hasDates !== false;
   const fcol = (path?: string) =>
@@ -57,7 +63,7 @@ export default function EntryFields({
     />
   ) : null;
 
-  return (
+  const node = (
     <div
       className="ent"
       style={{
@@ -692,4 +698,5 @@ export default function EntryFields({
       </div>
     </div>
   );
+  return atomicBlock(ent.pathPrefix, node);
 }

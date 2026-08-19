@@ -1,7 +1,7 @@
 // Data model, constants, and pure builders for InlineResumeEditor's flexible-sections resume.
 // No React/DOM here — safe to import from the Redux slice, the mock API, and the component.
 
-export const PX_PER_IN = 794 / 8.5;
+import { DEFAULT_PAGE_SIZE_ID, type PageSizeId } from '@/lib/resume-pagination/page-constants';
 
 export function firstFont(stack: string) {
   return (stack || 'Helvetica').split(',')[0].replace(/["']/g, '').trim();
@@ -82,8 +82,34 @@ export type EditorSection = EditorTextSection | EditorEntriesSection;
 export interface EditorResumeDocument {
   dateFormat: string;
   templateId: string;
+  /** Defaults to 'a4' — resumes saved before this field existed load as A4 with no migration. */
+  pageSize: PageSizeId;
   header: EditorHeader;
   sections: EditorSection[];
+}
+
+/** Single source of truth for "does this section have anything a user would mind losing" — used
+ *  both by the delete-section confirmation popover and by isEditorResumeEmpty below. */
+export function sectionHasContent(s: EditorSection): boolean {
+  if (s.kind === 'text') return !!(s.body && s.body.trim());
+  return s.entries.some(
+    (en) =>
+      [en.title, en.subtitle, en.desc].some((x) => x && x.trim()) ||
+      en.start ||
+      en.end ||
+      en.link ||
+      (en.contribs || []).some((x) => x && x.trim()),
+  );
+}
+
+/** True when the header carries no real text and every section is empty/whitespace-only. Gates
+ *  the Review drawer's Generate button — any partial content anywhere is enough to enable it. */
+export function isEditorResumeEmpty(doc: EditorResumeDocument): boolean {
+  const headerEmpty =
+    !doc.header.name.trim() &&
+    !doc.header.title.trim() &&
+    doc.header.contacts.every((c) => !c.text || !c.text.trim());
+  return headerEmpty && doc.sections.every((s) => !sectionHasContent(s));
 }
 
 export const MS = [
@@ -254,6 +280,7 @@ export function buildBlankEditorResume(mintId: () => string): EditorResumeDocume
   return {
     dateFormat: 'MMM',
     templateId: 'openSans',
+    pageSize: DEFAULT_PAGE_SIZE_ID,
     header: {
       name: '',
       title: '',

@@ -173,3 +173,197 @@ test('reanchorFinding: marks unresolved when the text truly changed', () => {
   brokenResume.experience[0].bullets[0] = 'Owned the rollout of a new billing system.';
   assert.equal(E.reanchorFinding(finding, brokenResume).unresolved, true);
 });
+
+test('bul-responsible: message-only, no concrete suggestion to apply', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'bul-responsible')!;
+  const [finding] = rule.evaluate(
+    mkResume({ bullets: ['Responsible for the onboarding process.'] }),
+  );
+  assert.equal(finding.matchedText, 'Responsible for');
+  assert.equal(finding.suggestion, undefined);
+});
+
+test('rem-references: suggestion deletes the flagged text', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'rem-references')!;
+  const resume = mkResume({});
+  resume.summary = 'References available upon request.';
+  const [finding] = rule.evaluate(resume);
+  assert.equal(finding.matchedText, 'References available upon request');
+  assert.equal(finding.suggestion, '');
+});
+
+test('rem-salary: suggestion deletes the flagged text', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'rem-salary')!;
+  const resume = mkResume({});
+  resume.summary = 'Targeting a base salary of $95,000.';
+  const [finding] = rule.evaluate(resume);
+  assert.equal(finding.suggestion, '');
+});
+
+test('bul-duplicate: suggestion deletes the whole duplicate bullet', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'bul-duplicate')!;
+  const resume = mkResume({
+    bullets: ['Shipped the billing redesign.', 'Shipped the billing redesign.'],
+  });
+  const [finding] = rule.evaluate(resume);
+  assert.equal(finding.matchedText, 'Shipped the billing redesign.');
+  assert.equal(finding.suggestion, '');
+});
+
+test('gw-repeat-word: suggestion collapses to a single occurrence', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'gw-repeat-word')!;
+  const resume = mkResume({});
+  resume.summary = 'Planned the the launch.';
+  const [finding] = rule.evaluate(resume);
+  assert.equal(finding.matchedText, 'the the');
+  assert.equal(finding.suggestion, 'the');
+});
+
+test('fmt-dates: suggestion normalizes comma spacing', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'fmt-dates')!;
+  const resume = {
+    ...mkResume({}),
+    experience: [
+      { ...mkResume({}).experience[0], location: 'Austin, TX' },
+      { ...mkResume({}).experience[0], location: 'Dallas,TX' },
+    ],
+  };
+  const [finding] = rule.evaluate(resume);
+  assert.equal(finding.matchedText, 'Dallas,TX');
+  assert.equal(finding.suggestion, 'Dallas, TX');
+});
+
+test('cons-titlecase: suggestion capitalizes the first letter only', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'cons-titlecase')!;
+  const resume = {
+    ...mkResume({}),
+    experience: [
+      { ...mkResume({}).experience[0], title: 'Senior Engineer' },
+      { ...mkResume({}).experience[0], title: 'staff engineer' },
+    ],
+  };
+  const [finding] = rule.evaluate(resume);
+  assert.equal(finding.matchedText, 'staff engineer');
+  assert.equal(finding.suggestion, 'Staff engineer');
+});
+
+test('sk-stuffing: dedup suggestion replaces the whole field, preserving first occurrence', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'sk-stuffing')!;
+  const resume = { ...mkResume({}), skills: 'SQL, Excel, sql, Python' };
+  const findings = rule.evaluate(resume);
+  const dupFinding = findings.find((f) => f.matchedText === resume.skills)!;
+  assert.ok(dupFinding, 'flags the whole field as matchedText, not the bare duplicate word');
+  assert.equal(dupFinding.suggestion, 'SQL, Excel, Python');
+  assert.match(dupFinding.message, /"sql"/i);
+});
+test('sk-stuffing: long list gets a finding but no invented suggestion', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'sk-stuffing')!;
+  const skills = Array.from({ length: 30 }, (_, i) => `Skill${i}`).join(', ');
+  const resume = { ...mkResume({}), skills };
+  const findings = rule.evaluate(resume);
+  const longFinding = findings.find((f) => f.message.includes('Long skills list'))!;
+  assert.ok(longFinding);
+  assert.equal(longFinding.suggestion, undefined);
+});
+test('sk-stuffing: no duplicates -> no finding', () => {
+  const rule = E.RULES.find((r) => r.ruleId === 'sk-stuffing')!;
+  const resume = { ...mkResume({}), skills: 'SQL, Excel, Python' };
+  assert.equal(rule.evaluate(resume).length, 0);
+});
+
+const EMPTY_RESUME = {
+  header: { name: '', title: '', email: '', phone: '', location: '', linkedin: '', github: '' },
+  summary: '',
+  experience: [],
+  education: [],
+  skills: '',
+  certifications: [],
+  projects: [],
+};
+const COMPLETE_RESUME = {
+  header: {
+    name: 'Test User',
+    title: 'Engineer',
+    email: 'test@example.com',
+    phone: '555-0100',
+    location: 'Remote',
+    linkedin: '',
+    github: '',
+  },
+  summary: 'Engineer with eight years of experience shipping web applications and leading teams.',
+  experience: [
+    {
+      title: 'Engineer',
+      company: 'Acme',
+      location: 'Remote',
+      start: { y: 2020, m: 1 },
+      end: 'present',
+      bullets: ['Shipped a component library adopted across four product teams.'],
+    },
+  ],
+  education: [{ institution: 'State University', degree: 'B.S. Computer Science', field: '', gradYear: 2019 }],
+  skills: 'TypeScript, React, Node.js',
+  certifications: [],
+  projects: [],
+};
+
+test('computeCompletenessRatio: a fully empty resume fails every check', () => {
+  const result = E.computeCompletenessRatio(EMPTY_RESUME);
+  assert.equal(result.ratio, 0);
+  assert.equal(result.passed, 0);
+  assert.equal(result.missing.length, result.total);
+});
+test('computeCompletenessRatio: a complete resume passes every check', () => {
+  const result = E.computeCompletenessRatio(COMPLETE_RESUME);
+  assert.equal(result.ratio, 1);
+  assert.equal(result.missing.length, 0);
+});
+test('computeCompletenessRatio: contact info needs at least 2 of email/phone/location', () => {
+  const oneContact = { ...COMPLETE_RESUME, header: { ...COMPLETE_RESUME.header, phone: '', location: '' } };
+  assert.ok(E.computeCompletenessRatio(oneContact).missing.includes('Contact info'));
+});
+test('computeCompletenessRatio: a short summary does not count as present', () => {
+  const shortSummary = { ...COMPLETE_RESUME, summary: 'Engineer.' };
+  assert.ok(E.computeCompletenessRatio(shortSummary).missing.includes('Summary'));
+});
+
+test('computeScore: an empty resume scores near zero even with zero findings (the reported bug)', () => {
+  // This is the actual bug report: a resume with nothing filled in was scoring 90+, because no
+  // rule can find a *grammar/style* problem in text that doesn't exist, and the rules that flag
+  // the emptiness itself (sum-missing, exp-missing-fields, ...) were never wired into the score.
+  const { total } = E.computeScore([], EMPTY_RESUME);
+  assert.equal(total, 0);
+});
+test('computeScore: a fully complete, finding-free resume still scores 100', () => {
+  const { total, buckets } = E.computeScore([], COMPLETE_RESUME);
+  assert.equal(total, 100);
+  buckets.forEach((b) => assert.equal(b.score, b.max));
+});
+test('computeScore: partial completeness scales every bucket proportionally, not just one', () => {
+  const halfComplete = {
+    ...COMPLETE_RESUME,
+    education: [],
+    skills: '',
+    experience: [],
+  }; // 3 of 6 checks pass: header, contact, summary
+  const { total, buckets } = E.computeScore([], halfComplete);
+  buckets.forEach((b) => assert.equal(b.score, Math.round(b.max * 0.5)));
+  // Not exactly 100*3/6=50: each bucket independently rounds (matches the pre-existing per-bucket
+  // rounding this function already did before this fix), so the two 15-max buckets both round
+  // 7.5 up to 8 with nothing rounding down to compensate.
+  assert.equal(
+    total,
+    buckets.reduce((s, b) => s + b.score, 0),
+  );
+  assert.ok(total >= 49 && total <= 51, `expected total close to 50, got ${total}`);
+});
+
+test('runDeterministicRules: an intentional empty-string suggestion survives as "" not null', () => {
+  const resume = mkResume({
+    bullets: ['Shipped the billing redesign.', 'Shipped the billing redesign.'],
+  });
+  const findings = E.runDeterministicRules(resume);
+  const dup = findings.find((f) => f.ruleId === 'bul-duplicate')!;
+  assert.ok(dup, 'bul-duplicate finding present');
+  assert.equal(dup.suggestion, '', 'suggestion is an intentional empty string, not null');
+});

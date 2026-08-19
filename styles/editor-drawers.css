@@ -1,0 +1,125 @@
+/* Right/left slide-in drawers anchored to the editor viewport. position:fixed so opening either
+   one never shifts or resizes the paginated resume view underneath — z-index stays below the
+   existing popover system (backdrop 40, popovers 50, see InlineResumeEditor.tsx) so template/date/
+   link pickers still render correctly over an open drawer, and above the pagination view's own
+   low-z-index chrome (page-count badge 5, overflow-warning banner 6). */
+.ire-drawer {
+  position: fixed;
+  top: 0;
+  height: 100vh;
+  width: var(--drawer-width, 300px);
+  background: #fff;
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.22s ease;
+  box-sizing: border-box;
+}
+.ire-drawer.side-left {
+  left: 0;
+  border-right: 1px solid #e2ddd4;
+  box-shadow: 8px 0 24px -16px rgba(30, 27, 22, 0.25);
+}
+.ire-drawer.side-right {
+  right: 0;
+  border-left: 1px solid #e2ddd4;
+  box-shadow: -8px 0 24px -16px rgba(30, 27, 22, 0.25);
+}
+.ire-drawer.side-left.closed {
+  transform: translateX(-100%);
+}
+.ire-drawer.side-right.closed {
+  transform: translateX(100%);
+}
+.ire-drawer.open {
+  transform: translateX(0);
+}
+
+.ire-drawer-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 25;
+  width: 26px;
+  height: 60px;
+  border: 1px solid #e2ddd4;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b665e;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.ire-drawer-toggle.side-left {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+.ire-drawer-toggle.side-right {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+.ire-drawer-toggle:hover {
+  color: #3e5c76;
+  border-color: #3e5c76;
+}
+
+.ire-drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(38, 35, 31, 0.35);
+  z-index: 23;
+}
+
+.ire-drawer-header {
+  flex: none;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #e6e2da;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ire-drawer-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #26231f;
+}
+.ire-drawer-subtitle {
+  font-size: 11px;
+  color: #9a948a;
+  margin-top: 2px;
+}
+.ire-drawer-close {
+  flex: none;
+  border: none;
+  background: none;
+  color: #9a948a;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px;
+}
+.ire-drawer-close:hover {
+  color: #3f3b35;
+}
+.ire-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 30px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .ire-drawer {
+    width: 100vw;
+  }
+  .ire-drawer-backdrop.open {
+    display: block;
+  }
+}

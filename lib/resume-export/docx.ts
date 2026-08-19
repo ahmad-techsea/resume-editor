@@ -1,4 +1,5 @@
 import { firstFont } from '@/lib/resume-data/editor-resume-data';
+import { PAGE_SIZES_IN, type PageSizeId } from '@/lib/resume-pagination/page-constants';
 import type { ExportModel } from './build-model';
 import type { ExportMargins } from './pdf';
 
@@ -7,6 +8,7 @@ export async function exportResumeToDocx(
   templateFont: string,
   margins: ExportMargins,
   accent: string,
+  pageSize: PageSizeId,
 ): Promise<void> {
   let docxLib: any;
   try {
@@ -21,10 +23,11 @@ export async function exportResumeToDocx(
   const { Document, Packer, Paragraph, TextRun, ExternalHyperlink, BorderStyle, TabStopType } =
     docxLib;
   const m = margins;
+  const { widthIn, heightIn } = PAGE_SIZES_IN[pageSize];
   const font = firstFont(templateFont);
   const accentHex = accent.replace('#', '');
   const twips = (inch: number) => Math.round(inch * 1440);
-  const contentTwips = twips(8.5 - m.left - m.right);
+  const contentTwips = twips(widthIn - m.left - m.right);
   const children: any[] = [];
   children.push(
     new Paragraph({
@@ -147,6 +150,10 @@ export async function exportResumeToDocx(
       {
         properties: {
           page: {
+            size: {
+              width: twips(widthIn),
+              height: twips(heightIn),
+            },
             margin: {
               top: twips(m.top),
               right: twips(m.right),

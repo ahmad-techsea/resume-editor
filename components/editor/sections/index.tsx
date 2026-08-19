@@ -1,11 +1,12 @@
 import React from 'react';
-import SummaryEditor from './SummaryEditor';
-import EducationEditor from './EducationEditor';
-import ExperienceEditor from './ExperienceEditor';
-import CertificationsEditor from './CertificationsEditor';
-import AwardsEditor from './AwardsEditor';
-import SkillsEditor from './SkillsEditor';
-import ReferencesEditor from './ReferencesEditor';
+import buildSummaryBlocks from './SummaryEditor';
+import buildEducationBlocks from './EducationEditor';
+import buildExperienceBlocks from './ExperienceEditor';
+import buildCertificationsBlocks from './CertificationsEditor';
+import buildAwardsBlocks from './AwardsEditor';
+import buildSkillsBlocks from './SkillsEditor';
+import buildReferencesBlocks from './ReferencesEditor';
+import type { PgBlockSpec } from '../pagination/block-spec';
 
 export interface CatalogSectionProps {
   s: any;
@@ -15,19 +16,23 @@ export interface CatalogSectionProps {
   onKeyM: (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
 }
 
-const RENDERERS: Record<string, React.ComponentType<CatalogSectionProps>> = {
-  summary: SummaryEditor,
-  education: EducationEditor,
-  experience: ExperienceEditor,
-  certifications: CertificationsEditor,
-  awards: AwardsEditor,
-  skills: SkillsEditor,
-  references: ReferencesEditor,
+type CatalogBlockBuilder = (props: CatalogSectionProps) => PgBlockSpec[];
+
+const BUILDERS: Record<string, CatalogBlockBuilder> = {
+  summary: buildSummaryBlocks,
+  education: buildEducationBlocks,
+  experience: buildExperienceBlocks,
+  certifications: buildCertificationsBlocks,
+  awards: buildAwardsBlocks,
+  skills: buildSkillsBlocks,
+  references: buildReferencesBlocks,
 };
 
-/** Dispatches a section using the real components/sections/** catalog to its editable renderer,
- *  keyed by section type. Used only when SectionBlock's `s.useCatalog` is true. */
-export default function CatalogSectionRenderer({ s, ...handlers }: CatalogSectionProps) {
-  const Renderer = RENDERERS[s.type];
-  return Renderer ? <Renderer s={s} {...handlers} /> : null;
+/** Dispatches a section using the real components/sections/** catalog to its block builder, keyed
+ *  by section type. Used only when SectionBlock's `s.useCatalog` is true. Returns a flat block
+ *  array (a section heading block plus one block per entry / one body block), not a mounted
+ *  component — see SectionBlock.tsx for why sections can no longer be a single wrapping node. */
+export default function buildCatalogSectionBlocks({ s, ...handlers }: CatalogSectionProps): PgBlockSpec[] {
+  const builder = BUILDERS[s.type];
+  return builder ? builder({ s, ...handlers }) : [];
 }

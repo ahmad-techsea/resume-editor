@@ -354,7 +354,6 @@ export const RULES: Rule[] = [
           ? {
               matchedText: m.matchedText,
               message: 'Vague — replace "responsible for" with a strong action verb.',
-              suggestion: 'Led / Owned / Managed …',
             }
           : null;
       }),
@@ -378,6 +377,7 @@ export const RULES: Rule[] = [
             fieldPath,
             matchedText: text,
             message: 'Duplicate accomplishment — nearly identical to another bullet.',
+            suggestion: '',
           });
         else seen.set(key, fieldPath);
       });
@@ -405,22 +405,35 @@ export const RULES: Rule[] = [
     scope: 'field',
     severity: 'suggestion',
     evaluate: (r) => {
-      const skills = (r.skills || '')
+      const raw = r.skills || '';
+      const skills = raw
         .split(',')
         .map((s: string) => s.trim())
         .filter(Boolean);
       const seen = new Set<string>();
       const dups = new Set<string>();
+      const deduped: string[] = [];
       skills.forEach((s: string) => {
         const k = s.toLowerCase();
-        if (seen.has(k)) dups.add(s);
-        seen.add(k);
+        if (seen.has(k)) {
+          dups.add(s);
+        } else {
+          seen.add(k);
+          deduped.push(s);
+        }
       });
-      const out: RawFinding[] = [...dups].map((s) => ({
-        fieldPath: 'skills',
-        matchedText: s,
-        message: `"${s}" is listed more than once.`,
-      }));
+      const out: RawFinding[] = [];
+      if (dups.size) {
+        // The whole field is the matchedText (not the bare duplicate word) so the fix is an
+        // unambiguous whole-field replacement — a bare word like "SQL" can't be located as a
+        // specific *duplicate* occurrence via a plain indexOf search of the field text.
+        out.push({
+          fieldPath: 'skills',
+          matchedText: raw,
+          message: `${[...dups].map((s) => `"${s}"`).join(', ')} ${dups.size === 1 ? 'is' : 'are'} listed more than once.`,
+          suggestion: deduped.join(', '),
+        });
+      }
       if (skills.length > 25)
         out.push({
           fieldPath: 'skills',
@@ -562,7 +575,7 @@ export const RULES: Rule[] = [
         const re = /\b(\w+)\s+\1\b/gi;
         let m;
         while ((m = re.exec(t)))
-          out.push({ fieldPath, matchedText: m[0], message: 'Repeated word.' });
+          out.push({ fieldPath, matchedText: m[0], message: 'Repeated word.', suggestion: m[1] });
       });
       return out;
     },
@@ -694,6 +707,7 @@ export const RULES: Rule[] = [
             fieldPath: `experience[${bad.i}].location`,
             matchedText: bad.l,
             message: 'Location formatting is inconsistent with other entries ("City, ST").',
+            suggestion: bad.l.replace(/,(?!\s)/, ', '),
           },
         ];
       }
@@ -718,6 +732,7 @@ export const RULES: Rule[] = [
               fieldPath: `experience[${lower.i}].title`,
               matchedText: lower.t,
               message: 'Job title capitalization is inconsistent with other entries.',
+              suggestion: lower.t.charAt(0).toUpperCase() + lower.t.slice(1),
             },
           ]
         : [];
@@ -769,6 +784,7 @@ export const RULES: Rule[] = [
             fieldPath,
             matchedText: m.matchedText,
             message: 'Remove — this line is assumed and wastes space.',
+            suggestion: '',
           });
       });
       return out;
@@ -788,6 +804,7 @@ export const RULES: Rule[] = [
             fieldPath,
             matchedText: m[0],
             message: 'Remove salary expectations unless the employer asked for them.',
+            suggestion: '',
           });
       });
       return out;
@@ -900,7 +917,7 @@ export function runDeterministicRules(resume: any): Finding[] {
         fieldPath: res.fieldPath,
         matchedText: res.matchedText || '',
         message: res.message,
-        suggestion: res.suggestion || null,
+        suggestion: res.suggestion != null ? res.suggestion : null,
       });
     }
   }
@@ -1026,7 +1043,66 @@ const BUCKET_MAP: Record<string, string> = {
 };
 const SEV_WEIGHT: Record<string, number> = { critical: 8, warning: 4, suggestion: 1.5 };
 
-export function computeScore(findings: Finding[]) {
+// Every BUCKETS/BUCKET_MAP deduction above only fires when a rule finds a *problem in existing
+// text* (a grammar slip, a weak verb, a missing number). None of that machinery ever fires on a
+// resume with little or no content — there's no grammar to get wrong in an empty summary, no weak
+// verbs in a bullet list with zero bullets — so an almost-entirely-blank resume sails through with
+// every bucket near its max and scores 90+, even though rules like sum-missing/exp-missing-fields/
+// edu-missing/con-missing are correctly flagging that same emptiness as findings the whole time.
+// Those "is anything here at all" rules are deliberately never added to BUCKET_MAP for this: fixing
+// it by mapping them into the existing quality buckets would just add a small, easily-maxed-out
+// deduction, not solve the actual problem, which is that the other 9 buckets default to full marks
+// on empty content. Instead, completeness is measured directly from the resume's structure (not
+// from findings) and scales every bucket's earned score uniformly, so "no content to critique" no
+// longer reads as "flawless content."
+const COMPLETENESS_CHECKS: Array<{ id: string; label: string; test: (r: any) => boolean }> = [
+  {
+    id: 'header',
+    label: 'Name & title',
+    test: (r) => !!normalizeText(r?.header?.name) && !!normalizeText(r?.header?.title),
+  },
+  {
+    id: 'contact',
+    label: 'Contact info',
+    test: (r) =>
+      [r?.header?.email, r?.header?.phone, r?.header?.location].filter((x) => normalizeText(x))
+        .length >= 2,
+  },
+  {
+    id: 'summary',
+    label: 'Summary',
+    test: (r) => normalizeText(r?.summary).split(/\s+/).filter(Boolean).length >= 10,
+  },
+  {
+    id: 'experience',
+    label: 'Experience',
+    test: (r) =>
+      (r?.experience || []).some((e: any) => normalizeText(e?.title) && normalizeText(e?.company)),
+  },
+  {
+    id: 'education',
+    label: 'Education',
+    test: (r) =>
+      (r?.education || []).some((e: any) => normalizeText(e?.institution) && normalizeText(e?.degree)),
+  },
+  { id: 'skills', label: 'Skills', test: (r) => !!normalizeText(r?.skills) },
+];
+
+export interface CompletenessResult {
+  ratio: number;
+  passed: number;
+  total: number;
+  missing: string[];
+}
+
+export function computeCompletenessRatio(resume: any): CompletenessResult {
+  const total = COMPLETENESS_CHECKS.length;
+  const missing = COMPLETENESS_CHECKS.filter((c) => !c.test(resume)).map((c) => c.label);
+  const passed = total - missing.length;
+  return { ratio: total === 0 ? 1 : passed / total, passed, total, missing };
+}
+
+export function computeScore(findings: Finding[], resume: any) {
   const deduction: Record<string, number> = {};
   BUCKETS.forEach((b) => (deduction[b.id] = 0));
   findings.forEach((f) => {
@@ -1034,10 +1110,11 @@ export function computeScore(findings: Finding[]) {
     if (!b || f.grouped) return;
     deduction[b] += SEV_WEIGHT[f.severity] || 1;
   });
-  const buckets = BUCKETS.map((b) => ({
-    ...b,
-    score: Math.max(0, Math.round(b.max - Math.min(deduction[b.id], b.max))),
-  }));
+  const completeness = computeCompletenessRatio(resume);
+  const buckets = BUCKETS.map((b) => {
+    const earned = Math.max(0, Math.round(b.max - Math.min(deduction[b.id], b.max)));
+    return { ...b, score: Math.round(earned * completeness.ratio) };
+  });
   const total = buckets.reduce((s, b) => s + b.score, 0);
-  return { total, buckets };
+  return { total, buckets, completeness };
 }

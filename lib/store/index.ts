@@ -1,12 +1,12 @@
 import { configureStore } from '@reduxjs/toolkit';
 import editorResumeReducer from './editor-resume-slice';
-import reviewResumeReducer from './review-resume-slice';
+import reviewReducer from './review-slice';
 
 export function makeStore() {
   return configureStore({
     reducer: {
       editorResume: editorResumeReducer,
-      reviewResume: reviewResumeReducer,
+      review: reviewReducer,
     },
   });
 }

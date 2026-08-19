@@ -1,5 +1,4 @@
-import { hexToRgb } from '@/lib/resume-data/editor-resume-data';
-import type { ExportModel } from './build-model';
+import type { EditorResumeDocument } from '@/lib/resume-data/editor-resume-data';
 
 export interface ExportMargins {
   top: number;
@@ -8,119 +7,37 @@ export interface ExportMargins {
   left: number;
 }
 
+/** Downloads a PDF rendered by the headless-browser export pipeline (app/api/export-pdf), which
+ *  renders the same paginated component tree the user sees on screen — page-for-page identical
+ *  by construction, not a separately-maintained layout. Takes the real document (not the
+ *  flattened ExportModel jsPDF used to draw by hand) since the headless render goes through the
+ *  actual editor components. */
 export async function exportResumeToPDF(
-  model: ExportModel,
-  templateFont: string,
+  resumeDocument: EditorResumeDocument,
   margins: ExportMargins,
   accent: string,
 ): Promise<void> {
-  let jsPDFCtor: any;
+  let response: Response;
   try {
-    ({ jsPDF: jsPDFCtor } = await import('jspdf'));
+    response = await fetch('/api/export-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document: resumeDocument, margins, accent }),
+    });
   } catch {
-    jsPDFCtor = null;
-  }
-  if (!jsPDFCtor) {
-    alert('PDF library failed to load — check your connection and try again.');
+    alert('Could not reach the PDF export service — check your connection and try again.');
     return;
   }
-  const m = margins;
-  const baseFont = /georgia|times/i.test(templateFont) ? 'times' : 'helvetica';
-  const [ar, ag, ab] = hexToRgb(accent);
-  const doc = new jsPDFCtor({ unit: 'in', format: 'letter' });
-  const pageW = 8.5,
-    pageH = 11;
-  const contentW = pageW - m.left - m.right;
-  let y = m.top;
-  const ensureRoom = (h: number) => {
-    if (y + h > pageH - m.bottom) {
-      doc.addPage();
-      y = m.top;
-    }
-  };
-  const writeLines = (text: string, size: number, opts?: any) => {
-    opts = opts || {};
-    doc.setFont(baseFont, opts.style || 'normal');
-    doc.setFontSize(size);
-    doc.setTextColor(
-      opts.color ? opts.color[0] : 40,
-      opts.color ? opts.color[1] : 38,
-      opts.color ? opts.color[2] : 34,
-    );
-    const indent = opts.indent || 0;
-    const lines = doc.splitTextToSize(text, contentW - indent);
-    const lh = (size / 72) * 1.32;
-    lines.forEach((line: string) => {
-      ensureRoom(lh);
-      doc.text(line, m.left + indent, y);
-      y += lh;
-    });
-    y += opts.gapAfter || 0;
-  };
-  doc.setFont(baseFont, 'bold');
-  doc.setFontSize(20);
-  doc.setTextColor(30, 27, 22);
-  ensureRoom(0.3);
-  doc.text(model.name || 'Your name', m.left, y);
-  y += 0.3;
-  if (model.title) writeLines(model.title, 11, { color: [90, 90, 84], gapAfter: 0.06 });
-  if (model.contacts.length) {
-    doc.setFont(baseFont, 'normal');
-    doc.setFontSize(9.5);
-    doc.setTextColor(70, 68, 65);
-    let cx = m.left;
-    ensureRoom(0.2);
-    model.contacts.forEach((c, i) => {
-      const sep = i < model.contacts.length - 1 ? '   ·   ' : '';
-      if (c.url) doc.textWithLink(c.text, cx, y, { url: c.url });
-      else doc.text(c.text, cx, y);
-      cx += doc.getTextWidth(c.text + sep);
-    });
-    y += 0.22;
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    alert(`PDF export failed: ${body?.error || response.statusText}`);
+    return;
   }
-  y += 0.12;
-  model.sections.forEach((sec) => {
-    ensureRoom(0.25);
-    doc.setDrawColor(ar, ag, ab);
-    doc.setFont(baseFont, 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(ar, ag, ab);
-    doc.text((sec.title || '').toUpperCase(), m.left, y);
-    doc.setLineWidth(0.01);
-    doc.line(m.left, y + 0.05, pageW - m.right, y + 0.05);
-    y += 0.2;
-    if (sec.kind === 'text') {
-      if (sec.body) writeLines(sec.body, 9.8, { color: [55, 52, 48], gapAfter: 0.14 });
-    } else {
-      (sec.entries || []).forEach((en) => {
-        ensureRoom(0.2);
-        doc.setFont(baseFont, 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(35, 33, 30);
-        doc.text(en.title || '', m.left, y);
-        if (en.dates) {
-          doc.setFont(baseFont, 'normal');
-          doc.setFontSize(9);
-          doc.setTextColor(120, 116, 108);
-          doc.text(en.dates, pageW - m.right, y, { align: 'right' });
-        }
-        y += 0.17;
-        if (en.subtitle)
-          writeLines(en.subtitle, 9.5, { style: 'italic', color: [100, 96, 90], gapAfter: 0.04 });
-        if (en.link) {
-          doc.setFont(baseFont, 'normal');
-          doc.setTextColor(ar, ag, ab);
-          doc.setFontSize(8.5);
-          doc.textWithLink(en.link.text || en.link.url, m.left, y, { url: en.link.url });
-          y += 0.14;
-        }
-        if (en.desc) writeLines(en.desc, 9.5, { color: [55, 52, 48], gapAfter: 0.03 });
-        en.contribs.forEach((c: string) =>
-          writeLines('•  ' + c, 9.5, { color: [55, 52, 48], indent: 0.12 }),
-        );
-        y += 0.12;
-      });
-    }
-  });
-  doc.save((model.name || 'resume').trim().replace(/\s+/g, '_') + '.pdf');
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (resumeDocument.header.name || 'resume').trim().replace(/\s+/g, '_') + '.pdf';
+  a.click();
+  URL.revokeObjectURL(url);
 }

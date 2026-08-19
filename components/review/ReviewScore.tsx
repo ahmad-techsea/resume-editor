@@ -13,15 +13,24 @@ export interface ScoreBucket {
 export interface ReviewScoreProps {
   scoreTotal: number;
   scoreBuckets: ScoreBucket[];
+  /** e.g. "4/6 core sections present — missing: Education, Skills". Shown so a reduced score
+   *  doesn't look arbitrary: every bucket is scaled by how much of the resume actually exists,
+   *  not just how clean the fragments that do exist happen to be. */
+  completenessNote?: string | null;
 }
 
-export default function ReviewScore({ scoreTotal, scoreBuckets }: ReviewScoreProps) {
+export default function ReviewScore({ scoreTotal, scoreBuckets, completenessNote }: ReviewScoreProps) {
   return (
     <div style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
         <div style={{ fontSize: '30px', fontWeight: '700', color: '#26231F' }}>{scoreTotal}</div>
         <div style={{ fontSize: '12px', color: '#9A948A' }}>/ 100 Resume Quality</div>
       </div>
+      {completenessNote && (
+        <div style={{ fontSize: '11px', color: '#8A6A2E', marginTop: '4px', lineHeight: 1.5 }}>
+          {completenessNote}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginTop: '10px' }}>
         {scoreBuckets.map((b, i) => (
           <div

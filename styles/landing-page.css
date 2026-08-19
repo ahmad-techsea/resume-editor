@@ -1,0 +1,36 @@
+/* Scoped under .landing, matching the app's one-stylesheet-per-screen convention (.ire/.rrp/
+   .sectpl) so this page's resets can't leak into or be affected by the editor's. */
+.landing button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.landing input {
+  font: inherit;
+}
+.landing .choice-card {
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.landing .choice-card:hover,
+.landing .choice-card:focus-within {
+  border-color: #3e5c76;
+  box-shadow: 0 8px 24px -12px rgba(30, 27, 22, 0.25);
+  transform: translateY(-1px);
+}
+.landing .primary-btn:hover {
+  background: #33506a;
+}
+.landing .link-btn:hover {
+  text-decoration: underline;
+}
+.landing .spinner {
+  animation: landing-spin 0.8s linear infinite;
+}
+@keyframes landing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

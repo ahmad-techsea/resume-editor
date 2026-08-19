@@ -30,7 +30,7 @@ export default function SectionTemplates() {
         </div>
         <div style={{ fontSize: '12px', color: '#6B665E', marginTop: '4px' }}>
           Five styles per section. Reply with ids to apply them to the{' '}
-          <Link href="/">inline editor</Link> — e.g. “use 2e header + 7b skills”.
+          <Link href="/editor">inline editor</Link> — e.g. “use 2e header + 7b skills”.
         </div>
       </div>
       {sectionGroups.map((sec) => {

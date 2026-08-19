@@ -2,6 +2,7 @@ import React from 'react';
 import { FiX } from 'react-icons/fi';
 import DateRangeButtons from '../DateRangeButtons';
 import type { CatalogSectionProps } from './index';
+import { atomicBlock, type PgBlockSpec } from '../pagination/block-spec';
 
 const delBtnStyle: React.CSSProperties = {
   width: '18px',
@@ -75,8 +76,16 @@ function Desc({ ent, onEdit, onFocusF, onKeyM, color = '#3B3833' }: any) {
   );
 }
 
-/** Editable ports of components/sections/experience/*.tsx (ids 4a-4e). */
-export default function ExperienceEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }: CatalogSectionProps) {
+/** Editable ports of components/sections/experience/*.tsx (ids 4a-4e). Returns pagination
+ *  blocks — a heading block plus one atomic block per entry (the whole entry moves to the next
+ *  page as a unit; the section still breaks *between* entries) — not a mounted component. */
+export default function buildExperienceBlocks({
+  s,
+  onEdit,
+  onFocusF,
+  onKeyS,
+  onKeyM,
+}: CatalogSectionProps): PgBlockSpec[] {
   const heading = (
     <input
       data-path={s.pTitle}
@@ -127,10 +136,11 @@ export default function ExperienceEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
 
   if (s.style === '4b') {
     // ContributionBullets — same header as 4a, bullets instead of a description paragraph.
-    return (
-      <div>
-        {heading}
-        {s.entries.map((ent: any) => (
+    return [
+      atomicBlock(s.pTitle, heading, true),
+      ...s.entries.map((ent: any) =>
+        atomicBlock(
+          ent.pathPrefix,
           <div key={ent.id} style={{ marginTop: '11px' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
               <input
@@ -157,20 +167,24 @@ export default function ExperienceEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
               style={{ display: 'block', width: '100%', fontSize: '12.5px', color: '#6B665E', marginTop: '2px' }}
             />
             <Bullets ent={ent} onEdit={onEdit} onFocusF={onFocusF} onKeyS={onKeyS} />
-          </div>
-        ))}
-        {addBtn}
-      </div>
-    );
+          </div>,
+        ),
+      ),
+      atomicBlock(s.pTitle + '.add', addBtn),
+    ];
   }
 
   if (s.style === '4c') {
     // TimelineRail — dates above title+company, a description paragraph below.
-    return (
-      <div>
-        {heading}
-        {s.entries.map((ent: any) => (
-          <div key={ent.id} style={{ marginTop: '14px', borderLeft: '2px solid #E6E2DA', paddingLeft: '16px', position: 'relative' }}>
+    return [
+      atomicBlock(s.pTitle, heading, true),
+      ...s.entries.map((ent: any) =>
+        atomicBlock(
+          ent.pathPrefix,
+          <div
+            key={ent.id}
+            style={{ marginTop: '14px', borderLeft: '2px solid #E6E2DA', paddingLeft: '16px', position: 'relative' }}
+          >
             <span
               style={{
                 position: 'absolute',
@@ -210,19 +224,20 @@ export default function ExperienceEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
               />
             </div>
             <Desc ent={ent} onEdit={onEdit} onFocusF={onFocusF} onKeyM={onKeyM} />
-          </div>
-        ))}
-        {addBtn}
-      </div>
-    );
+          </div>,
+        ),
+      ),
+      atomicBlock(s.pTitle + '.add', addBtn),
+    ];
   }
 
   if (s.style === '4d') {
     // CompanyFirst — company eyebrow line above title, description paragraph below.
-    return (
-      <div>
-        {heading}
-        {s.entries.map((ent: any) => (
+    return [
+      atomicBlock(s.pTitle, heading, true),
+      ...s.entries.map((ent: any) =>
+        atomicBlock(
+          ent.pathPrefix,
           <div key={ent.id} style={{ marginTop: '12px' }}>
             <input
               data-path={ent.pS}
@@ -257,20 +272,27 @@ export default function ExperienceEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
               {delBtn(ent)}
             </div>
             <Desc ent={ent} onEdit={onEdit} onFocusF={onFocusF} onKeyM={onKeyM} />
-          </div>
-        ))}
-        {addBtn}
-      </div>
-    );
+          </div>,
+        ),
+      ),
+      atomicBlock(s.pTitle + '.add', addBtn),
+    ];
   }
 
   if (s.style === '4e') {
     // TwoColumnMeta — company + dates in a fixed left column, title + description on the right.
-    return (
-      <div>
-        {heading}
-        {s.entries.map((ent: any) => (
-          <div key={ent.id} style={{ display: 'grid', gridTemplateColumns: '128px 1fr', gap: '14px', marginTop: '12px' }}>
+    // Dates/title live in the grid; desc/contribs would need to be full-width siblings below it
+    // to be independently splittable — out of scope for entry-level atomicity (see plan notes),
+    // so the grid still holds the whole entry here.
+    return [
+      atomicBlock(s.pTitle, heading, true),
+      ...s.entries.map((ent: any) =>
+        atomicBlock(
+          ent.pathPrefix,
+          <div
+            key={ent.id}
+            style={{ display: 'grid', gridTemplateColumns: '128px 1fr', gap: '14px', marginTop: '12px' }}
+          >
             <div>
               <input
                 data-path={ent.pS}
@@ -302,18 +324,19 @@ export default function ExperienceEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
               </div>
               <Desc ent={ent} onEdit={onEdit} onFocusF={onFocusF} onKeyM={onKeyM} />
             </div>
-          </div>
-        ))}
-        {addBtn}
-      </div>
-    );
+          </div>,
+        ),
+      ),
+      atomicBlock(s.pTitle + '.add', addBtn),
+    ];
   }
 
   // '4a' (default) — ClassicParagraph: title+dates row, company below, description paragraph.
-  return (
-    <div>
-      {heading}
-      {s.entries.map((ent: any) => (
+  return [
+    atomicBlock(s.pTitle, heading, true),
+    ...s.entries.map((ent: any) =>
+      atomicBlock(
+        ent.pathPrefix,
         <div key={ent.id} style={{ marginTop: '11px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
             <input
@@ -340,9 +363,9 @@ export default function ExperienceEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
             style={{ display: 'block', width: '100%', fontSize: '12.5px', color: '#6B665E', marginTop: '2px' }}
           />
           <Desc ent={ent} onEdit={onEdit} onFocusF={onFocusF} onKeyM={onKeyM} />
-        </div>
-      ))}
-      {addBtn}
-    </div>
-  );
+        </div>,
+      ),
+    ),
+    atomicBlock(s.pTitle + '.add', addBtn),
+  ];
 }

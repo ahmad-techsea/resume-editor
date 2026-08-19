@@ -1,11 +1,13 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import {
-  buildSampleEditorResume,
+  buildBlankEditorResume,
   createSection,
   createBlankEntry,
   type EditorResumeDocument,
   type EditorEntriesSection,
 } from '@/lib/resume-data/editor-resume-data';
+import type { PageSizeId } from '@/lib/resume-pagination/page-constants';
+import { getOrCreateResumeId, loadPageSize } from '@/lib/resume-data/resume-persistence';
 import * as editorResumeApi from '@/lib/api/editor-resume-api';
 import { ensureArrayAtDotPath, resolveDotPath, setAtDotPath } from '@/lib/dot-path';
 import type { RootState } from './index';
@@ -16,25 +18,35 @@ interface EditorResumeState {
   data: EditorResumeDocument;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   nextId: number;
+  /** Stable per-browser id used only to key the page-size localStorage entry — not part of the
+   *  document schema (see lib/resume-data/resume-persistence.ts). Null until the client-only
+   *  fetch/reset thunk resolves it, so this never runs during SSR. */
+  resumeId: string | null;
 }
 
 // Mirrors the component's former `_uid = 100` starting point ('x101' is the first minted id).
+// Blank, not sample: the landing page is now the only place that seeds sample-like content (it
+// never does — Upload/Scratch both produce real or blank data), and a fresh store with no prior
+// seeding (a direct visit to /editor) should show an empty resume, not placeholder text.
 let seedCounter = 100;
 const initialState: EditorResumeState = {
-  data: buildSampleEditorResume(() => 'x' + ++seedCounter),
+  data: buildBlankEditorResume(() => 'x' + ++seedCounter),
   status: 'idle',
   nextId: seedCounter + 1,
+  resumeId: null,
 };
 
 export const fetchEditorResume = createAsyncThunk<
-  { data: EditorResumeDocument; nextId: number },
+  { data: EditorResumeDocument; nextId: number; resumeId: string },
   boolean,
   { state: RootState }
 >('editorResume/fetch', async (sampleOn, { getState }) => {
   let counter = getState().editorResume.nextId;
   const mintId = () => 'x' + counter++;
   const data = await editorResumeApi.fetchEditorResume(sampleOn, mintId);
-  return { data, nextId: counter };
+  const resumeId = getOrCreateResumeId();
+  data.pageSize = loadPageSize(resumeId);
+  return { data, nextId: counter, resumeId };
 });
 
 const editorResumeSlice = createSlice({
@@ -93,15 +105,32 @@ const editorResumeSlice = createSlice({
         section.entries[target.ei].link = null;
       }
     },
-    resetData(state, action: PayloadAction<{ data: EditorResumeDocument; nextId: number }>) {
+    resetData(
+      state,
+      action: PayloadAction<{ data: EditorResumeDocument; nextId: number; resumeId?: string }>,
+    ) {
       state.data = action.payload.data;
       state.nextId = action.payload.nextId;
+      if (action.payload.resumeId !== undefined) state.resumeId = action.payload.resumeId;
+    },
+    /** Narrow, header/sections-safe counterpart to resetData/fetchEditorResume — touches only the
+     *  page-size preference and resume identity, never the document content. InlineResumeEditor
+     *  dispatches this unconditionally on mount (regardless of skipInitialFetch) so a returning
+     *  visitor's saved page size is still honored even when the landing page already seeded the
+     *  real content moments earlier and the full fetch is correctly skipped. */
+    hydrateResumeMeta(
+      state,
+      action: PayloadAction<{ resumeId: string; pageSize: PageSizeId }>,
+    ) {
+      state.resumeId = action.payload.resumeId;
+      state.data.pageSize = action.payload.pageSize;
     },
   },
   extraReducers: (builder) => {
     builder.addCase(fetchEditorResume.fulfilled, (state, action) => {
       state.data = action.payload.data;
       state.nextId = action.payload.nextId;
+      state.resumeId = action.payload.resumeId;
       state.status = 'succeeded';
     });
   },

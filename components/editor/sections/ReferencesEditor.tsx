@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiX } from 'react-icons/fi';
 import type { CatalogSectionProps } from './index';
+import { atomicBlock, type PgBlockSpec } from '../pagination/block-spec';
 
 const delBtnStyle: React.CSSProperties = {
   width: '18px',
@@ -20,8 +21,13 @@ function initials(name: string): string {
 
 /** Editable ports of components/sections/references/*.tsx (ids 8a-8e). `8b` (AvailableOnRequest)
  *  is the one deliberate exception across the whole catalog: it needs no per-reference data at
- *  all, so it renders only the heading with no entries list. */
-export default function ReferencesEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }: CatalogSectionProps) {
+ *  all, so it renders only the heading with no entries list — it has no `s.entries.map()` to
+ *  split, so it stays a single block (like the text-kind sections) rather than heading+entries+add.
+ *  Returns pagination blocks, not a mounted component — see ExperienceEditor.tsx for the pattern.
+ *  8a/8e group entries inside a shared grid/flex container in the original design; since blocks
+ *  must be independently placeable, that container is dropped here and each entry becomes its own
+ *  block. */
+export default function buildReferencesBlocks({ s, onEdit, onFocusF, onKeyS, onKeyM }: CatalogSectionProps): PgBlockSpec[] {
   const heading = (
     <input
       data-path={s.pTitle}
@@ -71,23 +77,28 @@ export default function ReferencesEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
   );
 
   if (s.style === '8b') {
-    // AvailableOnRequest — heading only, no per-reference data.
-    return (
-      <div>
-        {heading}
-        <div style={{ marginTop: '12px', textAlign: 'center', fontSize: '12.5px', color: '#6B665E', padding: '6px 0 2px' }}>
-          References available upon request.
-        </div>
-      </div>
-    );
+    // AvailableOnRequest — heading only, no per-reference data. No s.entries.map() here, so this
+    // stays one opaque block rather than heading+entries+add.
+    return [
+      atomicBlock(
+        s.pTitle,
+        <div key="8b">
+          {heading}
+          <div style={{ marginTop: '12px', textAlign: 'center', fontSize: '12.5px', color: '#6B665E', padding: '6px 0 2px' }}>
+            References available upon request.
+          </div>
+        </div>,
+      ),
+    ];
   }
 
   if (s.style === '8c') {
     // RowsContactRight — name + role/company on the left, email/phone stacked on the right.
-    return (
-      <div>
-        {heading}
-        {s.entries.map((ent: any) => (
+    return [
+      atomicBlock(s.pTitle, heading, true),
+      ...s.entries.map((ent: any) =>
+        atomicBlock(
+          ent.pathPrefix,
           <div key={ent.id} style={{ marginTop: '10px', display: 'flex', alignItems: 'baseline', gap: '12px' }}>
             <div style={{ flex: '1', display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', fontSize: '12.5px', color: '#2E2B26' }}>
               <input
@@ -135,19 +146,20 @@ export default function ReferencesEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
               />
             </div>
             {delBtn(ent)}
-          </div>
-        ))}
-        {addBtn}
-      </div>
-    );
+          </div>,
+        ),
+      ),
+      atomicBlock(s.pTitle + '.add', addBtn),
+    ];
   }
 
   if (s.style === '8d') {
     // QuoteEndorsement — a quote (reusing `desc`) plus attribution: name, role/company, email.
-    return (
-      <div>
-        {heading}
-        {s.entries.map((ent: any) => (
+    return [
+      atomicBlock(s.pTitle, heading, true),
+      ...s.entries.map((ent: any) =>
+        atomicBlock(
+          ent.pathPrefix,
           <div key={ent.id} style={{ marginTop: '11px', position: 'relative' }}>
             <textarea
               data-path={ent.pD}
@@ -195,144 +207,146 @@ export default function ReferencesEditor({ s, onEdit, onFocusF, onKeyS, onKeyM }
               />
               {delBtn(ent)}
             </div>
-          </div>
-        ))}
-        {addBtn}
-      </div>
-    );
+          </div>,
+        ),
+      ),
+      atomicBlock(s.pTitle + '.add', addBtn),
+    ];
   }
 
   if (s.style === '8e') {
-    // InitialAvatars — a circular initials avatar, name — role/company, email · phone.
-    return (
-      <div>
-        {heading}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
-          {s.entries.map((ent: any) => (
-            <div key={ent.id} style={{ display: 'flex', gap: '11px', alignItems: 'center' }}>
-              <div
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  flex: 'none',
-                  borderRadius: '50%',
-                  background: 'color-mix(in oklab,var(--acc,#3E5C76) 12%,#fff)',
-                  color: 'var(--acc,#3E5C76)',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  display: 'grid',
-                  placeItems: 'center',
-                }}
-              >
-                {initials(ent.title)}
-              </div>
-              <div style={{ flex: '1', minWidth: '0' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', fontSize: '12.5px', fontWeight: '600', color: '#2E2B26' }}>
-                  <input
-                    data-path={ent.pT}
-                    value={ent.title}
-                    onChange={onEdit}
-                    onFocus={onFocusF}
-                    onKeyDown={onKeyS}
-                    placeholder={ent.phT}
-                    aria-label="Name"
-                    style={{ fontWeight: '600', color: '#2E2B26', minWidth: '60px' }}
-                  />
-                  <span>—</span>
-                  <input
-                    data-path={ent.pS}
-                    value={ent.subtitle}
-                    onChange={onEdit}
-                    onFocus={onFocusF}
-                    onKeyDown={onKeyS}
-                    placeholder={ent.phS}
-                    aria-label="Role, company"
-                    style={{ fontWeight: '600', color: '#2E2B26', flex: '1', minWidth: '60px' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '1px', fontSize: '11px', color: '#6B665E' }}>
-                  <input
-                    data-path={ent.pEmail}
-                    value={ent.email}
-                    onChange={onEdit}
-                    onFocus={onFocusF}
-                    onKeyDown={onKeyS}
-                    placeholder={ent.phEmail}
-                    aria-label="Email"
-                    style={{ color: '#6B665E', minWidth: '60px' }}
-                  />
-                  <span>·</span>
-                  <input
-                    data-path={ent.pPhone}
-                    value={ent.phone}
-                    onChange={onEdit}
-                    onFocus={onFocusF}
-                    onKeyDown={onKeyS}
-                    placeholder={ent.phPhone}
-                    aria-label="Phone"
-                    style={{ color: '#6B665E', minWidth: '60px' }}
-                  />
-                </div>
-              </div>
-              {delBtn(ent)}
+    // InitialAvatars — a circular initials avatar, name — role/company, email · phone. The shared
+    // flex-column container can't wrap independently-placeable blocks, so it's dropped here; each
+    // reference becomes its own block.
+    return [
+      atomicBlock(s.pTitle, heading, true),
+      ...s.entries.map((ent: any) =>
+        atomicBlock(
+          ent.pathPrefix,
+          <div key={ent.id} style={{ display: 'flex', gap: '11px', alignItems: 'center' }}>
+            <div
+              style={{
+                width: '34px',
+                height: '34px',
+                flex: 'none',
+                borderRadius: '50%',
+                background: 'color-mix(in oklab,var(--acc,#3E5C76) 12%,#fff)',
+                color: 'var(--acc,#3E5C76)',
+                fontSize: '12px',
+                fontWeight: '700',
+                display: 'grid',
+                placeItems: 'center',
+              }}
+            >
+              {initials(ent.title)}
             </div>
-          ))}
-        </div>
-        {addBtn}
-      </div>
-    );
+            <div style={{ flex: '1', minWidth: '0' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', flexWrap: 'wrap', fontSize: '12.5px', fontWeight: '600', color: '#2E2B26' }}>
+                <input
+                  data-path={ent.pT}
+                  value={ent.title}
+                  onChange={onEdit}
+                  onFocus={onFocusF}
+                  onKeyDown={onKeyS}
+                  placeholder={ent.phT}
+                  aria-label="Name"
+                  style={{ fontWeight: '600', color: '#2E2B26', minWidth: '60px' }}
+                />
+                <span>—</span>
+                <input
+                  data-path={ent.pS}
+                  value={ent.subtitle}
+                  onChange={onEdit}
+                  onFocus={onFocusF}
+                  onKeyDown={onKeyS}
+                  placeholder={ent.phS}
+                  aria-label="Role, company"
+                  style={{ fontWeight: '600', color: '#2E2B26', flex: '1', minWidth: '60px' }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '1px', fontSize: '11px', color: '#6B665E' }}>
+                <input
+                  data-path={ent.pEmail}
+                  value={ent.email}
+                  onChange={onEdit}
+                  onFocus={onFocusF}
+                  onKeyDown={onKeyS}
+                  placeholder={ent.phEmail}
+                  aria-label="Email"
+                  style={{ color: '#6B665E', minWidth: '60px' }}
+                />
+                <span>·</span>
+                <input
+                  data-path={ent.pPhone}
+                  value={ent.phone}
+                  onChange={onEdit}
+                  onFocus={onFocusF}
+                  onKeyDown={onKeyS}
+                  placeholder={ent.phPhone}
+                  aria-label="Phone"
+                  style={{ color: '#6B665E', minWidth: '60px' }}
+                />
+              </div>
+            </div>
+            {delBtn(ent)}
+          </div>,
+        ),
+      ),
+      atomicBlock(s.pTitle + '.add', addBtn),
+    ];
   }
 
-  // '8a' (default) — CardPair: 2-column grid of bordered cards.
-  return (
-    <div>
-      {heading}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '11px' }}>
-        {s.entries.map((ent: any) => (
-          <div key={ent.id} style={{ border: '1px solid #E6E2DA', borderRadius: '8px', padding: '11px 12px', position: 'relative' }}>
-            <button
-              onClick={ent.del}
-              aria-label="Delete reference"
-              title="Delete"
-              className="hv-danger"
-              style={{ ...delBtnStyle, position: 'absolute', top: '6px', right: '6px' }}
-            >
-              <FiX size={11} strokeWidth={1.6} />
-            </button>
-            <input
-              data-path={ent.pT}
-              value={ent.title}
-              onChange={onEdit}
-              onFocus={onFocusF}
-              onKeyDown={onKeyS}
-              placeholder={ent.phT}
-              aria-label="Name"
-              style={{ display: 'block', width: '100%', fontSize: '12.5px', fontWeight: '600', color: '#2E2B26' }}
-            />
-            <input
-              data-path={ent.pS}
-              value={ent.subtitle}
-              onChange={onEdit}
-              onFocus={onFocusF}
-              onKeyDown={onKeyS}
-              placeholder={ent.phS}
-              aria-label="Role, company"
-              style={{ display: 'block', width: '100%', fontSize: '11.5px', color: '#6B665E', marginTop: '2px' }}
-            />
-            <input
-              data-path={ent.pEmail}
-              value={ent.email}
-              onChange={onEdit}
-              onFocus={onFocusF}
-              onKeyDown={onKeyS}
-              placeholder={ent.phEmail}
-              aria-label="Email"
-              style={{ display: 'block', width: '100%', fontSize: '11px', color: '#3E5C76', marginTop: '5px' }}
-            />
-          </div>
-        ))}
-      </div>
-      {addBtn}
-    </div>
-  );
+  // '8a' (default) — CardPair: 2-column grid of bordered cards in the original design. The shared
+  // grid container can't wrap independently-placeable blocks, so it's dropped here; each card is
+  // its own block.
+  return [
+    atomicBlock(s.pTitle, heading, true),
+    ...s.entries.map((ent: any) =>
+      atomicBlock(
+        ent.pathPrefix,
+        <div key={ent.id} style={{ border: '1px solid #E6E2DA', borderRadius: '8px', padding: '11px 12px', position: 'relative' }}>
+          <button
+            onClick={ent.del}
+            aria-label="Delete reference"
+            title="Delete"
+            className="hv-danger"
+            style={{ ...delBtnStyle, position: 'absolute', top: '6px', right: '6px' }}
+          >
+            <FiX size={11} strokeWidth={1.6} />
+          </button>
+          <input
+            data-path={ent.pT}
+            value={ent.title}
+            onChange={onEdit}
+            onFocus={onFocusF}
+            onKeyDown={onKeyS}
+            placeholder={ent.phT}
+            aria-label="Name"
+            style={{ display: 'block', width: '100%', fontSize: '12.5px', fontWeight: '600', color: '#2E2B26' }}
+          />
+          <input
+            data-path={ent.pS}
+            value={ent.subtitle}
+            onChange={onEdit}
+            onFocus={onFocusF}
+            onKeyDown={onKeyS}
+            placeholder={ent.phS}
+            aria-label="Role, company"
+            style={{ display: 'block', width: '100%', fontSize: '11.5px', color: '#6B665E', marginTop: '2px' }}
+          />
+          <input
+            data-path={ent.pEmail}
+            value={ent.email}
+            onChange={onEdit}
+            onFocus={onFocusF}
+            onKeyDown={onKeyS}
+            placeholder={ent.phEmail}
+            aria-label="Email"
+            style={{ display: 'block', width: '100%', fontSize: '11px', color: '#3E5C76', marginTop: '5px' }}
+          />
+        </div>,
+      ),
+    ),
+    atomicBlock(s.pTitle + '.add', addBtn),
+  ];
 }

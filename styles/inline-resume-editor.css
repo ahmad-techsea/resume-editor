@@ -49,13 +49,23 @@
   color: #a9a29a;
   opacity: 1;
 }
+/* contentEditable has no native ::placeholder — FlowParagraph fragments carry their placeholder
+   text in data-placeholder and are empty (no text node) until the user types, so :empty:before
+   is the equivalent. Only ever set on a fragment's first page (see FlowParagraph.tsx). */
+.ire [contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #a9a29a;
+  pointer-events: none;
+}
 .ire input:hover:not(:focus),
-.ire textarea:hover:not(:focus) {
+.ire textarea:hover:not(:focus),
+.ire [contenteditable]:hover:not(:focus) {
   background: color-mix(in oklab, var(--acc, #3e5c76) 5%, transparent);
   border-radius: 3px;
 }
 .ire input:focus,
-.ire textarea:focus {
+.ire textarea:focus,
+.ire [contenteditable]:focus {
   outline: none;
   border-radius: 3px;
   background: color-mix(in oklab, var(--acc, #3e5c76) 7%, transparent);
@@ -117,6 +127,36 @@
   }
 }
 
+/* The page stack's own canvas — a neutral backdrop behind the individual white page sheets, with
+   PageFrame.tsx supplying the per-page gap/shadow/background. Screen-only; PrintPageStyle.tsx
+   (rendered per pagination instance, values sourced from lib/resume-pagination/page-constants.ts)
+   neutralizes this for print via its own @media print block. */
+.ire .pg-stack-outer {
+  padding: 14px 0 40px;
+}
+
+/* The page renders left-flush at a fixed ~794px width (see PageFrame.tsx), not centered — so the
+   left/right Settings/Review drawers (components/editor/Drawer.tsx, position:fixed, 300px/380px)
+   need dedicated gutters reserved on wide viewports, or an open drawer would sit on top of actual
+   resume content. This padding is static (keyed only to viewport width, never to drawer open/closed
+   state), so toggling a drawer never itself shifts anything — it just reveals/hides content in a
+   gutter that was already reserved. Below these breakpoints there isn't room for both the fixed-
+   width page and a full-width gutter; the drawer overlays the page's edge there instead, same as
+   the mobile behavior below 768px. Numbers: right gutter 320px = Settings' 300px + 20px breathing
+   room; left gutter 400px = Review's 380px + 20px. Combined threshold (1550px) covers common
+   1600px+ laptop/desktop displays; the right-only threshold (1150px) covers smaller ones too, since
+   satisfying it doesn't require touching the (coupled) left padding. */
+@media (min-width: 1150px) {
+  .ire {
+    padding-right: 320px !important;
+  }
+}
+@media (min-width: 1550px) {
+  .ire {
+    padding-left: 400px !important;
+  }
+}
+
 @media print {
   .ire .no-print,
   .ire .sctls,
@@ -130,20 +170,26 @@
   body:has(.ire) {
     background: #fff;
   }
-  .ire .pg {
-    box-shadow: none !important;
-    margin: 0 !important;
-    width: auto !important;
+  /* The root's inline padding gives on-screen breathing room around the toolbar/page stack —
+     harmless for native unconstrained print, but fatal now that pages are exact @page-sized
+     boxes with zero @page margin: any leftover offset pushes a page-frame's bottom past the
+     physical page's own height, spilling a sliver of it onto an extra, otherwise-blank sheet. */
+  .ire {
     padding: 0 !important;
   }
   .ire input::placeholder,
   .ire textarea::placeholder {
     color: transparent;
   }
+  .ire [contenteditable]:empty:before {
+    content: none;
+  }
   .ire input:focus,
   .ire textarea:focus,
   .ire input:hover,
-  .ire textarea:hover {
+  .ire textarea:hover,
+  .ire [contenteditable]:focus,
+  .ire [contenteditable]:hover {
     background: none;
     box-shadow: none;
   }
