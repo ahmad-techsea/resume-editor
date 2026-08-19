@@ -205,6 +205,22 @@
   }
 }
 
+/* The page-count badge (components/editor/pagination/PaginatedResumeView.tsx) sits in the same
+   top-right corner the Settings drawer/rail occupies, so it needs to clear whatever width that
+   drawer currently extends to — its collapsed rail below 768px doesn't exist at all (drawers are
+   full mobile overlays there instead), so the badge stays at the plain 14px corner inset; from
+   768px up, --settings-extent (set on .ire, see InlineResumeEditor.tsx) resolves to whichever of
+   --gutter-collapsed/--gutter-right-open matches the drawer's actual current state, so the badge
+   moves with it rather than sitting a fixed distance from the corner regardless of open/collapsed. */
+.ire .pg-total-badge {
+  right: 14px;
+}
+@media (min-width: 768px) {
+  .ire .pg-total-badge {
+    right: calc(var(--settings-extent) + 14px);
+  }
+}
+
 @media print {
   .ire .no-print,
   .ire .sctls,

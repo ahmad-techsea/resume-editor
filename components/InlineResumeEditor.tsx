@@ -985,6 +985,15 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
           position: 'relative',
           padding: '34px 24px 90px',
           ['--acc' as string]: v.accent,
+          // Settings sits on the right, same side as the page-count badge (styles/inline-resume-
+          // editor.css's .pg-total-badge) — this lets that badge's CSS clear whichever width the
+          // drawer currently occupies (collapsed rail vs. fully open) without threading the open
+          // state down through PaginatedResumeView as a prop. --gutter-collapsed/--gutter-right-
+          // open are the same viewport-breakpoint-driven values the drawer gutter itself uses, so
+          // this never drifts out of sync with them.
+          ['--settings-extent' as string]: this.state.settingsOpen
+            ? 'var(--gutter-right-open)'
+            : 'var(--gutter-collapsed)',
         }}
       >
         <SettingsDrawer

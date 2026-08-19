@@ -162,7 +162,9 @@ export default function PaginatedResumeView({
           style={{
             position: 'fixed',
             top: '12px',
-            right: '14px',
+            // right is set in styles/inline-resume-editor.css, not here — it depends on the
+            // Settings drawer's current collapsed/open extent (see .ire's --settings-extent) and
+            // needs its own responsive breakpoints, which are awkward to express as a JS style.
             zIndex: 5,
             padding: '4px 10px',
             borderRadius: '999px',
