@@ -1,0 +1,180 @@
+/* Right/left slide-in drawers anchored to the editor viewport. position:fixed so opening either
+   one never shifts or resizes the paginated resume view underneath — z-index stays below the
+   existing popover system (backdrop 40, popovers 50, see InlineResumeEditor.tsx) so template/date/
+   link pickers still render correctly over an open drawer, and above the pagination view's own
+   low-z-index chrome (page-count badge 5, overflow-warning banner 6).
+
+   Every selector here is scoped under .ire (matching styles/inline-resume-editor.css's convention)
+   rather than bare — `.ire button { background: none; border: 0; padding: 0; }` there is a 2-part
+   selector (specificity 0,1,1) that silently beat a bare `.ire-drawer-toggle { background: #fff }`
+   (0,1,0) despite this file's own rule being more specific-looking; every drawer element here IS a
+   descendant of .ire, so scoping under it the same way brings every rule to (0,2,0)+ and settles
+   the cascade the way it visually reads. */
+.ire .ire-drawer {
+  position: fixed;
+  top: 0;
+  height: 100vh;
+  width: var(--drawer-width, 300px);
+  background: #fff;
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.22s ease;
+  box-sizing: border-box;
+}
+.ire .ire-drawer.side-left {
+  left: 0;
+  border-right: 1px solid #e2ddd4;
+  box-shadow: 8px 0 24px -16px rgba(30, 27, 22, 0.25);
+}
+.ire .ire-drawer.side-right {
+  right: 0;
+  border-left: 1px solid #e2ddd4;
+  box-shadow: -8px 0 24px -16px rgba(30, 27, 22, 0.25);
+}
+.ire .ire-drawer.side-left.closed {
+  transform: translateX(-100%);
+}
+.ire .ire-drawer.side-right.closed {
+  transform: translateX(100%);
+}
+.ire .ire-drawer.open {
+  transform: translateX(0);
+}
+
+.ire .ire-drawer-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 25;
+  width: 26px;
+  height: 60px;
+  border: 1px solid #e2ddd4;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b665e;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.ire .ire-drawer-toggle.side-left {
+  left: 0;
+  border-radius: 0 8px 8px 0;
+  border-left: none;
+}
+.ire .ire-drawer-toggle.side-right {
+  right: 0;
+  border-radius: 8px 0 0 8px;
+  border-right: none;
+}
+.ire .ire-drawer-toggle:hover {
+  color: #3e5c76;
+  border-color: #3e5c76;
+}
+
+/* Rail content (icon/label) only ever renders visually on desktop (below) — on mobile the toggle
+   stays the small chevron tab above, unchanged. */
+.ire .ire-drawer-toggle-icon,
+.ire .ire-drawer-toggle-label {
+  display: none;
+}
+
+/* Desktop's "collapsed" resting state (Drawer.tsx renders this whenever !open, ≥768px): a persistent
+   full-height rail rather than fully hiding the drawer, so there's always a visible, generously-
+   sized affordance to reopen it — not just a 26px sliver. Its width matches the always-on gutter
+   .ire reserves at this breakpoint (styles/inline-resume-editor.css), so it never overlaps content.
+   When `open`, the toggle falls back to the plain small tab styled above (sitting on the open
+   drawer's edge), unchanged from before. */
+@media (min-width: 768px) {
+  .ire .ire-drawer-toggle.collapsed {
+    top: 0;
+    transform: none;
+    width: 56px;
+    height: 100vh;
+    border-radius: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 12px;
+    padding-top: 26px;
+  }
+  .ire .ire-drawer-toggle.collapsed.side-left {
+    border-right: 1px solid #e2ddd4;
+    border-left: none;
+  }
+  .ire .ire-drawer-toggle.collapsed.side-right {
+    border-left: 1px solid #e2ddd4;
+    border-right: none;
+  }
+  .ire .ire-drawer-toggle.collapsed .ire-drawer-toggle-chevron {
+    display: none;
+  }
+  .ire .ire-drawer-toggle.collapsed .ire-drawer-toggle-icon,
+  .ire .ire-drawer-toggle.collapsed .ire-drawer-toggle-label {
+    display: flex;
+  }
+  .ire .ire-drawer-toggle.collapsed .ire-drawer-toggle-label {
+    writing-mode: vertical-rl;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
+
+.ire .ire-drawer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(38, 35, 31, 0.35);
+  z-index: 23;
+}
+
+.ire .ire-drawer-header {
+  flex: none;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid #e6e2da;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ire .ire-drawer-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #26231f;
+}
+.ire .ire-drawer-subtitle {
+  font-size: 11px;
+  color: #9a948a;
+  margin-top: 2px;
+}
+.ire .ire-drawer-close {
+  flex: none;
+  border: none;
+  background: none;
+  color: #9a948a;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 4px;
+}
+.ire .ire-drawer-close:hover {
+  color: #3f3b35;
+}
+.ire .ire-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 30px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .ire .ire-drawer {
+    width: 100vw;
+  }
+  .ire .ire-drawer-backdrop.open {
+    display: block;
+  }
+}
