@@ -8,6 +8,7 @@ import {
   type PageSizeId,
   type MarginsIn,
 } from '@/lib/resume-pagination/page-constants';
+import type { PageAssignment } from '@/lib/resume-pagination/block-model';
 import PageFrame, { PAGE_GAP_PX } from './PageFrame';
 import PrintPageStyle from './PrintPageStyle';
 
@@ -25,6 +26,9 @@ export interface PaginatedResumeViewProps {
   pageOverlay?: React.ReactNode;
   /** Ref to page 0's frame element, for margin-drag rect math. */
   firstPageFrameRef?: (el: HTMLDivElement | null) => void;
+  /** Fires whenever the settled block→page assignments change. The DOCX export mirrors the
+   *  on-screen page breaks from these — nothing else exposes them outside this component. */
+  onPaginationChange?: (info: { assignments: PageAssignment[]; pageCount: number }) => void;
 }
 
 /** Renders the resume as a stack of discrete physical pages that repaginate in real time. This
@@ -40,6 +44,7 @@ export default function PaginatedResumeView({
   fontFamily,
   pageOverlay,
   firstPageFrameRef,
+  onPaginationChange,
 }: PaginatedResumeViewProps) {
   const metrics = getPageMetrics(pageSize, margins);
   const { setContainerEl, assignments, pageCount, warnings, onCompositionStart, onCompositionEnd } =
@@ -48,6 +53,12 @@ export default function PaginatedResumeView({
       usableHeight: metrics.contentHeightPx,
     });
   const pages = groupAssignmentsByPage(blocks, assignments, pageCount);
+
+  const onPaginationChangeRef = useRef(onPaginationChange);
+  onPaginationChangeRef.current = onPaginationChange;
+  useEffect(() => {
+    onPaginationChangeRef.current?.({ assignments, pageCount });
+  }, [assignments, pageCount]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const warnSig = (w: (typeof warnings)[number]) => `${w.blockKey}:${w.kind}:${w.message}`;
   const visibleWarnings = warnings.filter((w) => !dismissed.has(warnSig(w)));

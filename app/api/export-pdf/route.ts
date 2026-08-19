@@ -11,6 +11,9 @@ import type { EditorResumeDocument } from '@/lib/resume-data/editor-resume-data'
 // (Playwright can't run on Edge).
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// A cold serverless start pays brotli-extracting the Chromium binary to /tmp plus launch plus a
+// full page render with web-font fetches — comfortably over the platform default.
+export const maxDuration = 60;
 
 const MAX_BODY_CHARS = 500_000;
 
@@ -59,11 +62,22 @@ export async function POST(request: Request) {
 
   const context = await browser.newContext();
   try {
+    // The print page reads this injected payload directly; the token-store fetch below it is only
+    // a fallback. On serverless the in-memory token store can't be trusted at all — the payload
+    // GET may be routed to a different instance than the one that stored it — so the primary
+    // handoff must not leave this process.
+    await context.addInitScript(
+      (p) => {
+        (window as unknown as { __pgExportPayload?: unknown }).__pgExportPayload = p;
+      },
+      { document: body.document, margins: body.margins, accent: body.accent },
+    );
     const page = await context.newPage();
     await page.goto(`${origin}/export/pdf-print?token=${encodeURIComponent(token)}`, {
       waitUntil: 'networkidle',
     });
-    await page.waitForFunction('window.__pgExportReady === true', { timeout: 15000 });
+    // Generous timeout: a cold start renders with zero warm caches, including web-font fetches.
+    await page.waitForFunction('window.__pgExportReady === true', { timeout: 30000 });
     const pdfBuffer = await page.pdf({
       width: `${metrics.widthIn}in`,
       height: `${metrics.heightIn}in`,

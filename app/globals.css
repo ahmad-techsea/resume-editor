@@ -6,3 +6,31 @@ body {
   font-family: 'Open Sans', system-ui, sans-serif;
   background: #efede8;
 }
+
+/* Self-hosted faces for the Verdana/Tahoma templates (no metric-compatible Google font exists for
+   either). DejaVu has no 600 weight; every browser resolves 600 up to the 700 face, which keeps
+   layout deterministic across machines — the same reason these are bundled at all. */
+@font-face {
+  font-family: 'DejaVu Sans';
+  src: url('/fonts/DejaVuSans.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DejaVu Sans';
+  src: url('/fonts/DejaVuSans-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DejaVu Sans Condensed';
+  src: url('/fonts/DejaVuSansCondensed.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'DejaVu Sans Condensed';
+  src: url('/fonts/DejaVuSansCondensed-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}

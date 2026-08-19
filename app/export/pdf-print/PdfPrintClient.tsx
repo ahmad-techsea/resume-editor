@@ -8,9 +8,20 @@ import InlineResumeEditor from '@/components/InlineResumeEditor';
 import type { EditorResumeDocument } from '@/lib/resume-data/editor-resume-data';
 import type { MarginsIn } from '@/lib/resume-pagination/page-constants';
 
+interface ExportPayload {
+  document: EditorResumeDocument;
+  margins: MarginsIn;
+  accent?: string;
+}
+
 declare global {
   interface Window {
     __pgExportReady?: boolean;
+    /** Injected by the export route via addInitScript — the primary payload handoff. The token
+     *  fetch below is only a fallback (dev debugging / opening the URL by hand): on serverless
+     *  the in-memory token store may live on a different instance than the one serving the
+     *  payload GET. */
+    __pgExportPayload?: ExportPayload;
   }
 }
 
@@ -31,12 +42,18 @@ export default function PdfPrintClient() {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
 
   useEffect(() => {
+    const injected = window.__pgExportPayload;
+    if (injected) {
+      store.dispatch(editorResumeActions.resetData({ data: injected.document, nextId: 1_000_000 }));
+      setState({ status: 'ready', accent: injected.accent, margins: injected.margins });
+      return;
+    }
     if (!token) return; // handled by the direct render-time check below, no state needed
     let cancelled = false;
     fetch(`/api/export-pdf/payload?token=${encodeURIComponent(token)}`)
       .then((res) => {
         if (!res.ok) throw new Error('Export payload not found or already used.');
-        return res.json() as Promise<{ document: EditorResumeDocument; margins: MarginsIn; accent?: string }>;
+        return res.json() as Promise<ExportPayload>;
       })
       .then((payload) => {
         if (cancelled) return;
@@ -53,7 +70,7 @@ export default function PdfPrintClient() {
     };
   }, [token, store]);
 
-  if (!token) {
+  if (!token && state.status === 'loading' && (typeof window === 'undefined' || !window.__pgExportPayload)) {
     return <div style={{ padding: 24, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>Missing export token.</div>;
   }
   if (state.status === 'error') {
@@ -92,7 +109,11 @@ function ExportReadySignal() {
       for (let i = 0; i < maxIterations && !cancelled; i++) {
         await new Promise((resolve) => setTimeout(resolve, 50));
         const pageCount = document.querySelectorAll('.pg-frame').length;
-        const signature = String(pageCount);
+        // fonts.status is part of the signature because fonts.ready above can resolve before
+        // layout first *uses* a face (e.g. an @font-face that only starts loading once the
+        // template's stack references it) — a late load must reset the stability count so the
+        // engine's post-font repagination is what gets snapshotted.
+        const signature = `${pageCount}:${document.fonts ? document.fonts.status : 'n/a'}`;
         if (signature === lastSignature && pageCount > 0) {
           stableCount++;
           if (stableCount >= 3) break;

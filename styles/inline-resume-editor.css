@@ -245,7 +245,8 @@
   .ire .adde,
   .ire .adds,
   .ire .lctl,
-  .ire .cbdel {
+  .ire .cbdel,
+  .ire .hv-danger {
     display: none !important;
   }
   body:has(.ire) {

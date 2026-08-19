@@ -187,46 +187,59 @@ export const TSTYLES: Record<string, string[]> = {
   languages: ['classic', 'pills', 'side', 'tinted', 'center'],
   custom: ['classic', 'side', 'tinted', 'editorial', 'center'],
 };
+// Every stack leads with a web-delivered face (Google Fonts link in app/layout.tsx or @font-face
+// in app/globals.css) so text shapes identically in the editor, browser print, and the headless
+// PDF renderer — pagination is measured from real glyph metrics, so a machine-dependent system
+// font would change page counts between the UI and the export. The classic names stay as
+// fallbacks, and `docxFont` carries them into Word exports, where recipients' machines have
+// Arial/Tahoma/etc. but almost never Arimo/DejaVu (the web faces are metric-compatible or close,
+// so Word's layout still tracks the UI's).
 export const TEMPLATES = [
   {
     id: 'openSans',
     name: 'Open Sans Modern',
     font: "'Open Sans',system-ui,sans-serif",
+    docxFont: 'Open Sans',
     accent: null as string | null,
     header: 'left',
   },
   {
     id: 'arial',
     name: 'Arial ATS Classic',
-    font: 'Arial,Helvetica,sans-serif',
+    font: 'Arimo,Arial,Helvetica,sans-serif',
+    docxFont: 'Arial',
     accent: '#2C4A6E',
     header: 'left',
   },
   {
     id: 'georgia',
     name: 'Georgia Traditional',
-    font: "Georgia,'Times New Roman',serif",
+    font: "Gelasio,Georgia,'Times New Roman',serif",
+    docxFont: 'Georgia',
     accent: '#6E3B3B',
     header: 'center',
   },
   {
     id: 'verdana',
     name: 'Verdana Minimal',
-    font: 'Verdana,Tahoma,sans-serif',
+    font: "'DejaVu Sans',Verdana,Tahoma,sans-serif",
+    docxFont: 'Verdana',
     accent: '#44484E',
     header: 'split',
   },
   {
     id: 'times',
     name: 'Times Executive',
-    font: "'Times New Roman',Times,serif",
+    font: "Tinos,'Times New Roman',Times,serif",
+    docxFont: 'Times New Roman',
     accent: '#1F3A5F',
     header: 'center',
   },
   {
     id: 'tahoma',
     name: 'Tahoma Bold',
-    font: 'Tahoma,Geneva,sans-serif',
+    font: "'DejaVu Sans Condensed',Tahoma,Geneva,sans-serif",
+    docxFont: 'Tahoma',
     accent: '#3F5940',
     header: 'banner',
   },

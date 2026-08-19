@@ -18,6 +18,7 @@ import {
   sectionHasContent,
 } from '@/lib/resume-data/editor-resume-data';
 import { CSS_DPI, DEFAULT_MARGIN_IN, type PageSizeId } from '@/lib/resume-pagination/page-constants';
+import type { PageAssignment } from '@/lib/resume-pagination/block-model';
 import { getOrCreateResumeId, loadPageSize, savePageSize } from '@/lib/resume-data/resume-persistence';
 import { buildExportModel, exportAccent } from '@/lib/resume-export/build-model';
 import { exportResumeToPDF } from '@/lib/resume-export/pdf';
@@ -110,6 +111,10 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
   private _pageEl: HTMLDivElement | null = null;
   private _dragDir: string | null = null;
   private _dragRect: DOMRect | null = null;
+  /** Latest settled block→page assignments from the live pagination engine — the DOCX export
+   *  mirrors the on-screen page breaks from these. A ref-style stash (not state): the view
+   *  already re-rendered; only the next export click reads it. */
+  private _pagination: { assignments: PageAssignment[]; pageCount: number } | null = null;
 
   constructor(props: Props) {
     super(props);
@@ -207,6 +212,9 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
   pageRef = (el: HTMLDivElement | null) => {
     this._pageEl = el;
   };
+  onPaginationChange = (info: { assignments: PageAssignment[]; pageCount: number }) => {
+    this._pagination = info;
+  };
   startDrag = (dir: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     this._dragDir = dir;
@@ -241,7 +249,14 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
     const tpl = getTemplate(this.props.data.templateId);
     const accent = exportAccent(tpl.id, tpl.accent, this.props.accent);
     const model = buildExportModel(this.props.data);
-    await exportResumeToDocx(model, tpl.font, this.state.margins, accent, this.props.data.pageSize);
+    await exportResumeToDocx(
+      model,
+      tpl,
+      this.state.margins,
+      accent,
+      this.props.data.pageSize,
+      this._pagination?.assignments ?? [],
+    );
   };
 
   closePop = () => this.setState({ pop: null });
@@ -1034,6 +1049,7 @@ class InlineResumeEditor extends React.Component<Props, EditorState> {
           zoom={v.zoom}
           fontFamily={v.tplFont}
           firstPageFrameRef={this.pageRef}
+          onPaginationChange={this.onPaginationChange}
           pageOverlay={
             v.showMargins ? (
               <MarginsOverlay
