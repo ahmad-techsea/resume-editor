@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
+import { FiCheckSquare } from 'react-icons/fi';
 import { useDispatch, useSelector } from 'react-redux';
 import { withTimeout } from '@/lib/async-utils';
 import { isEditorResumeEmpty } from '@/lib/resume-data/editor-resume-data';
@@ -229,6 +230,8 @@ export default function ReviewDrawer({ open, onToggle }: ReviewDrawerProps) {
       title="Resume Review"
       subtitle="23-category checklist · fixes apply straight into your resume"
       toggleLabel={open ? 'Close review' : 'Open review'}
+      icon={<FiCheckSquare size={18} />}
+      railLabel="Review"
       width={380}
     >
       <ReviewProgress

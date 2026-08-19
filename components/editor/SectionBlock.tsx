@@ -144,7 +144,14 @@ export default function buildSectionBlocks({
     if (list.length === 0) return list;
     const [first, ...rest] = list;
     return [
-      decorateBlock(first, (node) => <div style={{ position: 'relative', marginTop: '30px' }}>{node}</div>),
+      decorateBlock(first, (node) => (
+        // className="sec" isn't styling — styles/inline-resume-editor.css's hover/focus-reveal
+        // rules for .sctls and .adde key off a .sec ancestor (":hover > .sctls" etc.); without it
+        // those controls are in the DOM but can never become visible or clickable.
+        <div className="sec" style={{ position: 'relative', marginTop: '30px' }}>
+          {node}
+        </div>
+      )),
       ...rest,
     ];
   };

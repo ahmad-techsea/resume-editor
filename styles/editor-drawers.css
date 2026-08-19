@@ -68,6 +68,54 @@
   border-color: #3e5c76;
 }
 
+/* Rail content (icon/label) only ever renders visually on desktop (below) — on mobile the toggle
+   stays the small chevron tab above, unchanged. */
+.ire-drawer-toggle-icon,
+.ire-drawer-toggle-label {
+  display: none;
+}
+
+/* Desktop's "collapsed" resting state (Drawer.tsx renders this whenever !open, ≥768px): a persistent
+   full-height rail rather than fully hiding the drawer, so there's always a visible, generously-
+   sized affordance to reopen it — not just a 26px sliver. Its width matches the always-on gutter
+   .ire reserves at this breakpoint (styles/inline-resume-editor.css), so it never overlaps content.
+   When `open`, the toggle falls back to the plain small tab styled above (sitting on the open
+   drawer's edge), unchanged from before. */
+@media (min-width: 768px) {
+  .ire-drawer-toggle.collapsed {
+    top: 0;
+    transform: none;
+    width: 56px;
+    height: 100vh;
+    border-radius: 0;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 12px;
+    padding-top: 26px;
+  }
+  .ire-drawer-toggle.collapsed.side-left {
+    border-right: 1px solid #e2ddd4;
+    border-left: none;
+  }
+  .ire-drawer-toggle.collapsed.side-right {
+    border-left: 1px solid #e2ddd4;
+    border-right: none;
+  }
+  .ire-drawer-toggle.collapsed .ire-drawer-toggle-chevron {
+    display: none;
+  }
+  .ire-drawer-toggle.collapsed .ire-drawer-toggle-icon,
+  .ire-drawer-toggle.collapsed .ire-drawer-toggle-label {
+    display: flex;
+  }
+  .ire-drawer-toggle.collapsed .ire-drawer-toggle-label {
+    writing-mode: vertical-rl;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
+
 .ire-drawer-backdrop {
   display: none;
   position: fixed;

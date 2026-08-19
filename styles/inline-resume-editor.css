@@ -135,25 +135,73 @@
   padding: 14px 0 40px;
 }
 
-/* The page renders left-flush at a fixed ~794px width (see PageFrame.tsx), not centered — so the
-   left/right Settings/Review drawers (components/editor/Drawer.tsx, position:fixed, 300px/380px)
-   need dedicated gutters reserved on wide viewports, or an open drawer would sit on top of actual
-   resume content. This padding is static (keyed only to viewport width, never to drawer open/closed
-   state), so toggling a drawer never itself shifts anything — it just reveals/hides content in a
-   gutter that was already reserved. Below these breakpoints there isn't room for both the fixed-
-   width page and a full-width gutter; the drawer overlays the page's edge there instead, same as
-   the mobile behavior below 768px. Numbers: right gutter 320px = Settings' 300px + 20px breathing
-   room; left gutter 400px = Review's 380px + 20px. Combined threshold (1550px) covers common
-   1600px+ laptop/desktop displays; the right-only threshold (1150px) covers smaller ones too, since
-   satisfying it doesn't require touching the (coupled) left padding. */
+/* The page is a fixed ~794px sheet (see PageFrame.tsx); auto margins center it within whatever
+   content-box width .ire's left/right padding leaves. .pg-stack-outer/.pg-zoom-wrapper/.pg-stack
+   (its ancestors) are all unconstrained full-width blocks, so this is the one place that needs it;
+   it applies per-page, so a multi-page stack centers every sheet identically. Auto-margin centering
+   is relative to the content box between the two gutters below, not the viewport — since those
+   gutters are deliberately asymmetric (see below), the two aren't the same thing; the compensating
+   transforms further down correct the difference so the page is genuinely viewport-centered, not
+   just centered-with-an-off-center-look. */
+.ire .pg-frame {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Reserved gutters for the left/right Settings/Review drawers (components/editor/Drawer.tsx,
+   position:fixed) so an open (or collapsed-rail) drawer never sits on top of actual resume content.
+   This padding is static (keyed only to viewport width, never to drawer open/closed state), so
+   toggling a drawer never itself shifts anything — it just reveals/hides content in a gutter that
+   was already reserved. Two tiers per side: a small always-on gutter for the collapsed rail
+   (components/editor/Drawer.tsx's `.ire-drawer-toggle.collapsed`, 56px, styles/editor-drawers.css),
+   then a wider one once there's room for the fully open drawer (300px/380px). Below 768px there's no
+   gutter at all — drawers are full-screen mobile overlays there instead (styles/editor-drawers.css).
+   Below the wide-open thresholds there isn't room for both the fixed-width page and a full gutter;
+   an opened drawer overlays the page's edge there instead of pushing it. Numbers: right gutter
+   320px = Settings' 300px + 20px breathing room; left gutter 400px = Review's 380px + 20px. Combined
+   threshold (1550px) covers common 1600px+ laptop/desktop displays; the right-only threshold
+   (1150px) covers smaller ones too, since satisfying it doesn't require touching the (coupled) left
+   padding — deliberately kept staggered/asymmetric rather than equalized, so Settings still gets its
+   full push-gutter starting at the smaller 1150px threshold. Exposed as custom properties (rather
+   than repeating the raw numbers) so the .pg-frame centering correction below can never drift out of
+   sync with the padding it's compensating for. */
+.ire {
+  --gutter-collapsed: 56px;
+  --gutter-right-open: 320px;
+  --gutter-left-open: 400px;
+}
+@media (min-width: 768px) {
+  .ire {
+    padding-right: var(--gutter-collapsed) !important;
+    padding-left: var(--gutter-collapsed) !important;
+  }
+}
 @media (min-width: 1150px) {
   .ire {
-    padding-right: 320px !important;
+    padding-right: var(--gutter-right-open) !important;
   }
 }
 @media (min-width: 1550px) {
   .ire {
-    padding-left: 400px !important;
+    padding-left: var(--gutter-left-open) !important;
+  }
+}
+
+/* .pg-frame's auto-margin centering above is relative to .ire's content box, whose left/right edges
+   sit at asymmetric distances from the two viewport edges (by design, per the gutters above) — so
+   the page would otherwise visibly sit off-center even though it's exactly centered "between the
+   drawers". Each rule below shifts it by exactly half the gutter difference for that breakpoint band
+   (the same padding values, via the custom properties above) so the page is truly viewport-centered
+   at every width, not just content-box-centered. No rule needed below 1150px: both sides use the
+   same --gutter-collapsed value there, so the content box is already symmetric. */
+@media (min-width: 1150px) and (max-width: 1549.98px) {
+  .ire .pg-frame {
+    transform: translateX(calc((var(--gutter-right-open) - var(--gutter-collapsed)) / 2));
+  }
+}
+@media (min-width: 1550px) {
+  .ire .pg-frame {
+    transform: translateX(calc((var(--gutter-right-open) - var(--gutter-left-open)) / 2));
   }
 }
 
