@@ -127,6 +127,23 @@
   }
 }
 
+/* Brief highlight pulse for a field jumped to from a Resume Review finding — see
+   lib/resume-review/locate-in-canvas.ts, which adds/removes this class per click. */
+.ire .ire-locate-flash {
+  animation: ire-locate-pulse 0.9s ease;
+  border-radius: 3px;
+}
+@keyframes ire-locate-pulse {
+  0%,
+  100% {
+    background: transparent;
+  }
+  20%,
+  55% {
+    background: color-mix(in oklab, var(--acc, #3e5c76) 22%, transparent);
+  }
+}
+
 /* The page stack's own canvas — a neutral backdrop behind the individual white page sheets, with
    PageFrame.tsx supplying the per-page gap/shadow/background. Screen-only; PrintPageStyle.tsx
    (rendered per pagination instance, values sourced from lib/resume-pagination/page-constants.ts)

@@ -7,6 +7,7 @@ import { withTimeout } from '@/lib/async-utils';
 import { isEditorResumeEmpty } from '@/lib/resume-data/editor-resume-data';
 import { projectEditorToReview } from '@/lib/resume-data/editor-to-review-adapter';
 import { computeApplyFixResult } from '@/lib/resume-review/apply-fix';
+import { locateFindingInCanvas } from '@/lib/resume-review/locate-in-canvas';
 import { runJudgment } from '@/lib/resume-review/judgment';
 import * as E from '@/lib/resume-review-engine';
 import type { Finding, Severity } from '@/lib/resume-review-engine';
@@ -181,6 +182,12 @@ export default function ReviewDrawer({ open, onToggle }: ReviewDrawerProps) {
         applied: appliedSet.has(key),
         dismissed: dismissedSet.has(key),
         dismissLbl: dismissedSet.has(key) ? 'Restore' : 'Dismiss',
+        locatable: f.fieldPath != null,
+        onLocate: () => {
+          const result = locateFindingInCanvas(f, editorData);
+          if (result.ok && window.matchMedia('(max-width: 768px)').matches) onToggle();
+          return result;
+        },
         onApply: () => {
           const result = computeApplyFixResult(f, editorData);
           if (result.ok && activeVersion) {

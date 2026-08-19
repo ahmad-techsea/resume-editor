@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import type { ApplyFixResult } from '@/lib/resume-review/apply-fix';
+import type { LocateResult } from '@/lib/resume-review/locate-in-canvas';
 
 export interface FindingCardData {
   key: string;
@@ -15,11 +16,13 @@ export interface FindingCardData {
   applied: boolean;
   dismissed: boolean;
   dismissLbl: string;
+  locatable: boolean;
 }
 
 export interface FindingCardProps {
   item: FindingCardData;
   onApply: () => ApplyFixResult;
+  onLocate: () => LocateResult;
   onToggleDismiss: () => void;
 }
 
@@ -32,7 +35,7 @@ const FAILURE_MESSAGES: Record<string, string> = {
 
 const SUGGESTION_COLLAPSE_LENGTH = 160;
 
-export default function FindingCard({ item, onApply, onToggleDismiss }: FindingCardProps) {
+export default function FindingCard({ item, onApply, onLocate, onToggleDismiss }: FindingCardProps) {
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
@@ -40,6 +43,10 @@ export default function FindingCard({ item, onApply, onToggleDismiss }: FindingC
   const handleApply = () => {
     const result = onApply();
     setNotice(result.ok ? null : (FAILURE_MESSAGES[result.reason] ?? 'Could not apply this fix.'));
+  };
+  const handleLocate = () => {
+    const result = onLocate();
+    setNotice(result.ok ? null : (FAILURE_MESSAGES[result.reason] ?? 'Could not locate this text.'));
   };
   const handleCopy = () => {
     if (!item.suggestion) return;
@@ -66,48 +73,55 @@ export default function FindingCard({ item, onApply, onToggleDismiss }: FindingC
         overflow: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-        <span
-          style={{
-            width: '7px',
-            height: '7px',
-            borderRadius: '50%',
-            background: item.color,
-            flex: 'none',
-          }}
-        />
-        <span
-          style={{
-            fontSize: '9.5px',
-            fontWeight: '700',
-            letterSpacing: '.06em',
-            textTransform: 'uppercase',
-            color: '#9A948A',
-          }}
-        >
-          {item.categoryLabel}
-        </span>
-      </div>
-      <div style={{ fontSize: '12.5px', color: '#2E2B26', marginTop: '3px', lineHeight: '1.45' }}>
-        {item.message}
-      </div>
-      {item.hasQuote && (
-        <div
-          style={{
-            fontSize: '11px',
-            color: '#6B665E',
-            background: '#F6F4EF',
-            borderRadius: '5px',
-            padding: '3px 7px',
-            marginTop: '5px',
-            fontFamily: 'ui-monospace,Menlo,monospace',
-            overflowWrap: 'break-word',
-            whiteSpace: 'pre-wrap',
-          }}
-        >
-          &quot;{item.quote}&quot;
+      <div
+        className={item.locatable ? 'ire-finding-locate' : undefined}
+        onClick={item.locatable ? handleLocate : undefined}
+        style={{ cursor: item.locatable ? 'pointer' : undefined, padding: '2px 4px', margin: '-2px -4px' }}
+        title={item.locatable ? 'Show this in your resume' : undefined}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+          <span
+            style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              background: item.color,
+              flex: 'none',
+            }}
+          />
+          <span
+            style={{
+              fontSize: '9.5px',
+              fontWeight: '700',
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              color: '#9A948A',
+            }}
+          >
+            {item.categoryLabel}
+          </span>
         </div>
-      )}
+        <div style={{ fontSize: '12.5px', color: '#2E2B26', marginTop: '3px', lineHeight: '1.45' }}>
+          {item.message}
+        </div>
+        {item.hasQuote && (
+          <div
+            style={{
+              fontSize: '11px',
+              color: '#6B665E',
+              background: '#F6F4EF',
+              borderRadius: '5px',
+              padding: '3px 7px',
+              marginTop: '5px',
+              fontFamily: 'ui-monospace,Menlo,monospace',
+              overflowWrap: 'break-word',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            &quot;{item.quote}&quot;
+          </div>
+        )}
+      </div>
       {item.hasSuggestion && (
         <div
           style={{

@@ -2,11 +2,18 @@
 
 import React from 'react';
 import type { ApplyFixResult } from '@/lib/resume-review/apply-fix';
+import type { LocateResult } from '@/lib/resume-review/locate-in-canvas';
 import FindingCard, { type FindingCardData } from './FindingCard';
 
 export interface ReviewFindingsListProps {
   showFindings: boolean;
-  findingItems: Array<FindingCardData & { onApply: () => ApplyFixResult; onToggleDismiss: () => void }>;
+  findingItems: Array<
+    FindingCardData & {
+      onApply: () => ApplyFixResult;
+      onLocate: () => LocateResult;
+      onToggleDismiss: () => void;
+    }
+  >;
   hasNoVisible: boolean;
   showUnresolved: boolean;
   unresolvedCount: number;
@@ -24,7 +31,13 @@ export default function ReviewFindingsList(v: ReviewFindingsListProps) {
       {v.showFindings && (
         <>
           {v.findingItems.map((fi) => (
-            <FindingCard key={fi.key} item={fi} onApply={fi.onApply} onToggleDismiss={fi.onToggleDismiss} />
+            <FindingCard
+              key={fi.key}
+              item={fi}
+              onApply={fi.onApply}
+              onLocate={fi.onLocate}
+              onToggleDismiss={fi.onToggleDismiss}
+            />
           ))}
           {v.hasNoVisible && (
             <div

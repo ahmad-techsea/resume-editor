@@ -170,6 +170,13 @@
   box-sizing: border-box;
 }
 
+/* Clickable "about this finding" region of a review finding card — clicking it locates and
+   highlights the matching text in the resume canvas (see FindingCard.tsx / locate-in-canvas.ts). */
+.ire .ire-finding-locate:hover {
+  background: #f6f4ef;
+  border-radius: 6px;
+}
+
 @media (max-width: 768px) {
   .ire .ire-drawer {
     width: 100vw;
